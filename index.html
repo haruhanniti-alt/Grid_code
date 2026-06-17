@@ -1,0 +1,4533 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Grid Backtest Results</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans+Thai:wght@300;400;500;600&display=swap');
+
+  :root {
+    --bg: #0a0e1a;
+    --bg2: #111827;
+    --bg3: #1a2235;
+    --border: #1e2d45;
+    --text: #e2e8f0;
+    --muted: #64748b;
+    --accent: #38bdf8;
+    --green: #34d399;
+    --amber: #fbbf24;
+    --red: #f87171;
+    --purple: #a78bfa;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'IBM Plex Sans Thai', sans-serif;
+    font-size: 14px;
+    min-height: 100vh;
+  }
+
+  header {
+    border-bottom: 1px solid var(--border);
+    padding: 1.5rem 2rem;
+    display: flex;
+    align-items: baseline;
+    gap: 1rem;
+  }
+  header h1 { font-size: 18px; font-weight: 600; letter-spacing: -0.3px; color: var(--accent); font-family: 'IBM Plex Mono', monospace; }
+  header span { font-size: 12px; color: var(--muted); font-family: 'IBM Plex Mono', monospace; }
+
+  .controls {
+    padding: 1rem 2rem;
+    display: flex;
+    gap: .75rem;
+    flex-wrap: wrap;
+    border-bottom: 1px solid var(--border);
+    background: var(--bg2);
+  }
+
+  .ctrl-group { display: flex; align-items: center; gap: .5rem; }
+  .ctrl-label { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: .5px; }
+
+  select {
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    color: var(--text);
+    padding: 5px 10px;
+    border-radius: 6px;
+    font-size: 13px;
+    font-family: 'IBM Plex Mono', monospace;
+    cursor: pointer;
+    outline: none;
+  }
+  select:hover { border-color: var(--accent); }
+
+  .main { padding: 1.5rem 2rem; display: flex; flex-direction: column; gap: 1.5rem; }
+
+  .stats-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: .75rem; }
+
+  .stat-card {
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 1rem 1.25rem;
+  }
+  .stat-card .label { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: .5px; margin-bottom: 6px; }
+  .stat-card .value { font-size: 22px; font-weight: 600; font-family: 'IBM Plex Mono', monospace; }
+  .stat-card .sub { font-size: 11px; color: var(--muted); margin-top: 3px; }
+  .green { color: var(--green); }
+  .amber { color: var(--amber); }
+  .accent { color: var(--accent); }
+  .purple { color: var(--purple); }
+
+  .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+  @media (max-width: 900px) { .grid-2 { grid-template-columns: 1fr; } }
+
+  .card {
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    overflow: hidden;
+  }
+  .card-header {
+    padding: .75rem 1.25rem;
+    border-bottom: 1px solid var(--border);
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: .5px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .card-body { padding: 1.25rem; }
+
+  canvas { width: 100% !important; }
+
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  thead tr { border-bottom: 1px solid var(--border); }
+  th { padding: 8px 10px; text-align: right; font-size: 11px; color: var(--muted); font-weight: 500; letter-spacing: .3px; }
+  th:first-child { text-align: left; }
+  td { padding: 9px 10px; text-align: right; border-bottom: 1px solid #111827; font-family: 'IBM Plex Mono', monospace; font-size: 12px; }
+  td:first-child { text-align: left; font-family: 'IBM Plex Sans Thai', sans-serif; font-weight: 500; }
+  tr:last-child td { border-bottom: none; }
+  tr:hover td { background: var(--bg3); }
+
+  .rank { display: inline-flex; width: 20px; height: 20px; align-items: center; justify-content: center; background: var(--bg3); border-radius: 4px; font-size: 11px; color: var(--muted); margin-right: 6px; }
+  .rank.r1 { background: #fbbf2422; color: var(--amber); }
+  .rank.r2 { background: #94a3b822; color: #94a3b8; }
+  .rank.r3 { background: #cd7c3222; color: #cd7c32; }
+
+  .pill { display: inline-block; padding: 2px 8px; border-radius: 20px; font-size: 11px; font-family: 'IBM Plex Mono', monospace; }
+  .pill.up { background: #34d39922; color: var(--green); }
+  .pill.down { background: #f8717122; color: var(--red); }
+
+  .bar-wrap { display: flex; align-items: center; gap: 8px; }
+  .bar { height: 6px; border-radius: 3px; background: var(--accent); opacity: .7; min-width: 2px; }
+
+  .full-card { grid-column: 1 / -1; }
+  .grid-3 { display: grid; grid-template-columns: 2fr 1fr; gap: 1rem; }
+  @media (max-width: 900px) { .grid-3 { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>GRID BACKTEST</h1>
+  <span id="headerSub">82 levels · slippage 0.05% · Arithmetic</span>
+</header>
+
+<div class="controls">
+  <div class="ctrl-group">
+    <span class="ctrl-label">Pair</span>
+    <select id="pairSelect">
+      <option value="USDT">BTC/USDT</option>
+      <option value="THB">BTC/THB</option>
+      <option value="BOTH">📊 เปรียบเทียบ (Overlay)</option>
+    </select>
+  </div>
+  <div class="ctrl-group">
+    <span class="ctrl-label">Fee</span>
+    <select id="feeSelect">
+      <option value="0.0025">0.25%</option>
+      <option value="0.00125">0.125%</option>
+    </select>
+  </div>
+  <div class="ctrl-group" id="stakeGroup">
+    <span class="ctrl-label">Stake</span>
+    <select id="stakeSelect">
+      <option value="94786">94,786 USDT (3M THB)</option>
+      <option value="3000000" style="display:none">3,000,000 THB</option>
+    </select>
+  </div>
+  <div style="margin-left:auto; display:flex; align-items:center; gap:.5rem;">
+    <span style="font-size:11px; color:var(--muted);">BTC/THB: Bitkub · BTC/USDT: Binance</span>
+    <span id="dataBadge" style="font-size:10px; padding:2px 8px; border-radius:20px; background:#34d39922; color:var(--green); font-family:'IBM Plex Mono',monospace;">REAL DATA ✓</span>
+  </div>
+</div>
+
+<div class="main">
+
+  <!-- ── Live Position Summary ── -->
+  <div id="liveCard" style="background:var(--bg2); border:1px solid var(--border); border-radius:10px; padding:1.25rem 1.5rem; display:flex; flex-wrap:wrap; gap:1.5rem; align-items:center;">
+    <div style="flex:0 0 auto;">
+      <div style="font-size:11px; color:var(--muted); text-transform:uppercase; letter-spacing:.5px; margin-bottom:4px;">Asset</div>
+      <div style="font-size:16px; font-weight:600; color:var(--accent); font-family:'IBM Plex Mono',monospace;" id="lv-pair">BTC/USDT</div>
+      <div style="font-size:11px; color:var(--muted); margin-top:2px;">Spot Grid</div>
+    </div>
+    <div style="width:1px; height:48px; background:var(--border); flex:0 0 auto;"></div>
+    <div style="flex:1; display:grid; grid-template-columns:repeat(auto-fit,minmax(140px,1fr)); gap:1rem;">
+      <div>
+        <div style="font-size:11px; color:var(--muted); margin-bottom:3px;">Total Investment</div>
+        <div style="font-size:15px; font-weight:500; font-family:'IBM Plex Mono',monospace;" id="lv-invest">—</div>
+      </div>
+      <div>
+        <div style="font-size:11px; color:var(--muted); margin-bottom:3px;">Price Range</div>
+        <div style="font-size:13px; font-weight:500; font-family:'IBM Plex Mono',monospace;" id="lv-range">—</div>
+      </div>
+      <div>
+        <div style="font-size:11px; color:var(--muted); margin-bottom:3px;">Grid Levels</div>
+        <div style="font-size:15px; font-weight:500; font-family:'IBM Plex Mono',monospace;" id="lv-levels">—</div>
+      </div>
+      <div>
+        <div style="font-size:11px; color:var(--muted); margin-bottom:3px;">PNL</div>
+        <div style="font-size:15px; font-weight:500; font-family:'IBM Plex Mono',monospace;" id="lv-pnl">—</div>
+        <div style="font-size:11px; font-family:'IBM Plex Mono',monospace;" id="lv-pnl-pct">—</div>
+      </div>
+      <div>
+        <div style="font-size:11px; color:var(--muted); margin-bottom:3px;">Realized PNL</div>
+        <div style="font-size:15px; font-weight:500; font-family:'IBM Plex Mono',monospace;" id="lv-realized">—</div>
+        <div style="font-size:11px; font-family:'IBM Plex Mono',monospace;" id="lv-realized-pct">—</div>
+      </div>
+      <div>
+        <div style="font-size:11px; color:var(--muted); margin-bottom:3px;">Unrealized PNL</div>
+        <div style="font-size:15px; font-weight:500; font-family:'IBM Plex Mono',monospace;" id="lv-unrealized">—</div>
+        <div style="font-size:11px; font-family:'IBM Plex Mono',monospace;" id="lv-unrealized-pct">—</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="stats-row" id="statsRow"></div>
+
+  <div class="card">
+    <div class="card-header"><span id="cumTitle">Cumulative Returns — Grid Trading vs Buy &amp; Hold</span></div>
+    <div class="card-body" style="height:300px"><canvas id="cumChart"></canvas></div>
+  </div>
+
+  <div class="grid-3">
+    <div class="card">
+      <div class="card-header"><span>กำไรรายเดือน (Revenue/month)</span></div>
+      <div class="card-body" style="height:260px"><canvas id="monthlyChart"></canvas></div>
+    </div>
+    <div class="card">
+      <div class="card-header"><span>Return % แต่ละเหรียญ (ตามจริงช่วง backtest)</span></div>
+      <div class="card-body" style="height:260px"><canvas id="apyChart"></canvas></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header">
+      <span>ผลลัพธ์แยกตามเหรียญ — เรียงจาก Rev/mo สูงสุด</span>
+    </div>
+    <div class="card-body" style="padding: 0;">
+      <div id="allStakeTables"></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header"><span>เปรียบเทียบ Fee 0.25% vs 0.125% — ทุก Stake</span></div>
+    <div class="card-body" style="height:240px"><canvas id="feeCompareChart"></canvas></div>
+  </div>
+</div>
+
+<script>
+const RAW = 
+[
+  {
+    "fee": 0.0025,
+    "stake": 3000000,
+    "currency": "THB",
+    "source": "Bitkub",
+    "backtest_start": "2026-01-19",
+    "backtest_end": "2026-06-15",
+    "total_trades": 507,
+    "total_profit": 92029.45,
+    "profit_pct": 3.07,
+    "total_fee": 95926.14,
+    "revenue_per_month": 18928.22,
+    "pairs": [
+      {
+        "stake_total": 3000000,
+        "fee": 0.0025,
+        "ref_price": 2937000.02,
+        "last_price": 2161229.96,
+        "grid_min": 2000000,
+        "grid_max": 4000000,
+        "grid_step": 24691.36,
+        "grid_levels": 82,
+        "spacing_pct": 1.2346,
+        "profit_per_grid": 0.617,
+        "actual_min": 1950000.0,
+        "actual_max": 2937000.02,
+        "total_trades": 507,
+        "trades_per_year": 1251,
+        "trades_per_month": 104.3,
+        "wins": 507,
+        "win_pct": 100.0,
+        "total_profit": 92029.45,
+        "profit_pct": 3.07,
+        "apy": 7.57,
+        "total_fee": 95926.14,
+        "volume_per_month": 7881748.63,
+        "revenue_per_month": 18928.22,
+        "total_volume": 38321248.27,
+        "final_wallet": 1957883.11,
+        "coin_slots_held": 31,
+        "cost_of_held": 1134146.34,
+        "unrealized_val": 968257.99,
+        "unrealized_pnl": -165888.35,
+        "net_pnl": -73858.9,
+        "net_pnl_pct": -2.46,
+        "final_equity": 2926141.1,
+        "monthly_revenue": {
+          "2026-01": 6143.99,
+          "2026-02": 48856.74,
+          "2026-03": 16119.5,
+          "2026-04": 8040.37,
+          "2026-05": 5124.76,
+          "2026-06": 7744.11
+        },
+        "snapshots": [
+          {
+            "date": "2026-01-19",
+            "price": 2930000.0,
+            "grid_pct": 0.0,
+            "bh_pct": -0.238
+          },
+          {
+            "date": "2026-01-20",
+            "price": 2901554.98,
+            "grid_pct": -0.009,
+            "bh_pct": -1.207
+          },
+          {
+            "date": "2026-01-21",
+            "price": 2750259.81,
+            "grid_pct": -0.287,
+            "bh_pct": -6.358
+          },
+          {
+            "date": "2026-01-22",
+            "price": 2807348.81,
+            "grid_pct": -0.099,
+            "bh_pct": -4.414
+          },
+          {
+            "date": "2026-01-23",
+            "price": 2786107.24,
+            "grid_pct": -0.151,
+            "bh_pct": -5.138
+          },
+          {
+            "date": "2026-01-24",
+            "price": 2779742.94,
+            "grid_pct": -0.16,
+            "bh_pct": -5.354
+          },
+          {
+            "date": "2026-01-25",
+            "price": 2771015.93,
+            "grid_pct": -0.182,
+            "bh_pct": -5.651
+          },
+          {
+            "date": "2026-01-26",
+            "price": 2695000.0,
+            "grid_pct": -0.45,
+            "bh_pct": -8.24
+          },
+          {
+            "date": "2026-01-27",
+            "price": 2752044.05,
+            "grid_pct": -0.228,
+            "bh_pct": -6.297
+          },
+          {
+            "date": "2026-01-28",
+            "price": 2760000.1,
+            "grid_pct": -0.194,
+            "bh_pct": -6.027
+          },
+          {
+            "date": "2026-01-29",
+            "price": 2772500.0,
+            "grid_pct": -0.153,
+            "bh_pct": -5.601
+          },
+          {
+            "date": "2026-01-30",
+            "price": 2650305.69,
+            "grid_pct": -0.595,
+            "bh_pct": -9.761
+          },
+          {
+            "date": "2026-01-31",
+            "price": 2643593.99,
+            "grid_pct": -0.609,
+            "bh_pct": -9.99
+          },
+          {
+            "date": "2026-02-01",
+            "price": 2478364.88,
+            "grid_pct": -1.6,
+            "bh_pct": -15.616
+          },
+          {
+            "date": "2026-02-02",
+            "price": 2425658.87,
+            "grid_pct": -2.066,
+            "bh_pct": -17.41
+          },
+          {
+            "date": "2026-02-03",
+            "price": 2480266.99,
+            "grid_pct": -1.532,
+            "bh_pct": -15.551
+          },
+          {
+            "date": "2026-02-04",
+            "price": 2394090.32,
+            "grid_pct": -2.301,
+            "bh_pct": -18.485
+          },
+          {
+            "date": "2026-02-05",
+            "price": 2316616.71,
+            "grid_pct": -3.019,
+            "bh_pct": -21.123
+          },
+          {
+            "date": "2026-02-06",
+            "price": 2049980.29,
+            "grid_pct": -6.692,
+            "bh_pct": -30.202
+          },
+          {
+            "date": "2026-02-07",
+            "price": 2253013.39,
+            "grid_pct": -2.849,
+            "bh_pct": -23.289
+          },
+          {
+            "date": "2026-02-08",
+            "price": 2191045.28,
+            "grid_pct": -3.643,
+            "bh_pct": -25.399
+          },
+          {
+            "date": "2026-02-09",
+            "price": 2217126.47,
+            "grid_pct": -3.257,
+            "bh_pct": -24.511
+          },
+          {
+            "date": "2026-02-10",
+            "price": 2185251.03,
+            "grid_pct": -3.678,
+            "bh_pct": -25.596
+          },
+          {
+            "date": "2026-02-11",
+            "price": 2149287.21,
+            "grid_pct": -4.205,
+            "bh_pct": -26.82
+          },
+          {
+            "date": "2026-02-12",
+            "price": 2084565.27,
+            "grid_pct": -5.217,
+            "bh_pct": -29.024
+          },
+          {
+            "date": "2026-02-13",
+            "price": 2057658.37,
+            "grid_pct": -5.67,
+            "bh_pct": -29.94
+          },
+          {
+            "date": "2026-02-14",
+            "price": 2137812.4,
+            "grid_pct": -4.249,
+            "bh_pct": -27.211
+          },
+          {
+            "date": "2026-02-15",
+            "price": 2174394.41,
+            "grid_pct": -3.665,
+            "bh_pct": -25.965
+          },
+          {
+            "date": "2026-02-16",
+            "price": 2139589.8,
+            "grid_pct": -4.201,
+            "bh_pct": -27.151
+          },
+          {
+            "date": "2026-02-17",
+            "price": 2142169.28,
+            "grid_pct": -4.132,
+            "bh_pct": -27.063
+          },
+          {
+            "date": "2026-02-18",
+            "price": 2112101.55,
+            "grid_pct": -4.612,
+            "bh_pct": -28.086
+          },
+          {
+            "date": "2026-02-19",
+            "price": 2079434.38,
+            "grid_pct": -5.165,
+            "bh_pct": -29.199
+          },
+          {
+            "date": "2026-02-20",
+            "price": 2089004.96,
+            "grid_pct": -4.993,
+            "bh_pct": -28.873
+          },
+          {
+            "date": "2026-02-21",
+            "price": 2115767.44,
+            "grid_pct": -4.531,
+            "bh_pct": -27.962
+          },
+          {
+            "date": "2026-02-22",
+            "price": 2116532.47,
+            "grid_pct": -4.518,
+            "bh_pct": -27.936
+          },
+          {
+            "date": "2026-02-23",
+            "price": 2102031.15,
+            "grid_pct": -4.753,
+            "bh_pct": -28.429
+          },
+          {
+            "date": "2026-02-24",
+            "price": 2009056.8,
+            "grid_pct": -6.353,
+            "bh_pct": -31.595
+          },
+          {
+            "date": "2026-02-25",
+            "price": 1996998.97,
+            "grid_pct": -6.581,
+            "bh_pct": -32.005
+          },
+          {
+            "date": "2026-02-26",
+            "price": 2109786.68,
+            "grid_pct": -4.546,
+            "bh_pct": -28.165
+          },
+          {
+            "date": "2026-02-27",
+            "price": 2097991.06,
+            "grid_pct": -4.732,
+            "bh_pct": -28.567
+          },
+          {
+            "date": "2026-02-28",
+            "price": 2055767.31,
+            "grid_pct": -5.442,
+            "bh_pct": -30.005
+          },
+          {
+            "date": "2026-03-01",
+            "price": 2091428.69,
+            "grid_pct": -4.804,
+            "bh_pct": -28.79
+          },
+          {
+            "date": "2026-03-02",
+            "price": 2056242.21,
+            "grid_pct": -5.397,
+            "bh_pct": -29.988
+          },
+          {
+            "date": "2026-03-03",
+            "price": 2153966.14,
+            "grid_pct": -3.703,
+            "bh_pct": -26.661
+          },
+          {
+            "date": "2026-03-04",
+            "price": 2151739.43,
+            "grid_pct": -3.71,
+            "bh_pct": -26.737
+          },
+          {
+            "date": "2026-03-05",
+            "price": 2291153.42,
+            "grid_pct": -1.736,
+            "bh_pct": -21.99
+          },
+          {
+            "date": "2026-03-06",
+            "price": 2249348.15,
+            "grid_pct": -2.258,
+            "bh_pct": -23.413
+          },
+          {
+            "date": "2026-03-07",
+            "price": 2171503.27,
+            "grid_pct": -3.345,
+            "bh_pct": -26.064
+          },
+          {
+            "date": "2026-03-08",
+            "price": 2148325.46,
+            "grid_pct": -3.695,
+            "bh_pct": -26.853
+          },
+          {
+            "date": "2026-03-09",
+            "price": 2111221.23,
+            "grid_pct": -4.281,
+            "bh_pct": -28.116
+          },
+          {
+            "date": "2026-03-10",
+            "price": 2169107.1,
+            "grid_pct": -3.348,
+            "bh_pct": -26.145
+          },
+          {
+            "date": "2026-03-11",
+            "price": 2206901.39,
+            "grid_pct": -2.768,
+            "bh_pct": -24.859
+          },
+          {
+            "date": "2026-03-12",
+            "price": 2238462.94,
+            "grid_pct": -2.288,
+            "bh_pct": -23.784
+          },
+          {
+            "date": "2026-03-13",
+            "price": 2259695.26,
+            "grid_pct": -2.007,
+            "bh_pct": -23.061
+          },
+          {
+            "date": "2026-03-14",
+            "price": 2288515.79,
+            "grid_pct": -1.614,
+            "bh_pct": -22.08
+          },
+          {
+            "date": "2026-03-15",
+            "price": 2300792.36,
+            "grid_pct": -1.464,
+            "bh_pct": -21.662
+          },
+          {
+            "date": "2026-03-16",
+            "price": 2360935.25,
+            "grid_pct": -0.767,
+            "bh_pct": -19.614
+          },
+          {
+            "date": "2026-03-17",
+            "price": 2422966.93,
+            "grid_pct": -0.125,
+            "bh_pct": -17.502
+          },
+          {
+            "date": "2026-03-18",
+            "price": 2390423.93,
+            "grid_pct": -0.423,
+            "bh_pct": -18.61
+          },
+          {
+            "date": "2026-03-19",
+            "price": 2333956.99,
+            "grid_pct": -1.023,
+            "bh_pct": -20.533
+          },
+          {
+            "date": "2026-03-20",
+            "price": 2272285.7,
+            "grid_pct": -1.751,
+            "bh_pct": -22.632
+          },
+          {
+            "date": "2026-03-21",
+            "price": 2319955.31,
+            "grid_pct": -1.158,
+            "bh_pct": -21.009
+          },
+          {
+            "date": "2026-03-22",
+            "price": 2266113.24,
+            "grid_pct": -1.812,
+            "bh_pct": -22.843
+          },
+          {
+            "date": "2026-03-23",
+            "price": 2239765.27,
+            "grid_pct": -2.155,
+            "bh_pct": -23.74
+          },
+          {
+            "date": "2026-03-24",
+            "price": 2306067.34,
+            "grid_pct": -1.277,
+            "bh_pct": -21.482
+          },
+          {
+            "date": "2026-03-25",
+            "price": 2294103.47,
+            "grid_pct": -1.411,
+            "bh_pct": -21.89
+          },
+          {
+            "date": "2026-03-26",
+            "price": 2337489.7,
+            "grid_pct": -0.889,
+            "bh_pct": -20.412
+          },
+          {
+            "date": "2026-03-27",
+            "price": 2267088.79,
+            "grid_pct": -1.735,
+            "bh_pct": -22.809
+          },
+          {
+            "date": "2026-03-28",
+            "price": 2188188.92,
+            "grid_pct": -2.801,
+            "bh_pct": -25.496
+          },
+          {
+            "date": "2026-03-29",
+            "price": 2190240.59,
+            "grid_pct": -2.77,
+            "bh_pct": -25.426
+          },
+          {
+            "date": "2026-03-30",
+            "price": 2178602.64,
+            "grid_pct": -2.931,
+            "bh_pct": -25.822
+          },
+          {
+            "date": "2026-03-31",
+            "price": 2191108.01,
+            "grid_pct": -2.738,
+            "bh_pct": -25.396
+          },
+          {
+            "date": "2026-04-01",
+            "price": 2221462.15,
+            "grid_pct": -2.293,
+            "bh_pct": -24.363
+          },
+          {
+            "date": "2026-04-02",
+            "price": 2220391.11,
+            "grid_pct": -2.301,
+            "bh_pct": -24.399
+          },
+          {
+            "date": "2026-04-03",
+            "price": 2183071.85,
+            "grid_pct": -2.816,
+            "bh_pct": -25.67
+          },
+          {
+            "date": "2026-04-04",
+            "price": 2184746.24,
+            "grid_pct": -2.789,
+            "bh_pct": -25.613
+          },
+          {
+            "date": "2026-04-05",
+            "price": 2190677.17,
+            "grid_pct": -2.7,
+            "bh_pct": -25.411
+          },
+          {
+            "date": "2026-04-06",
+            "price": 2255445.25,
+            "grid_pct": -1.799,
+            "bh_pct": -23.206
+          },
+          {
+            "date": "2026-04-07",
+            "price": 2241999.69,
+            "grid_pct": -1.972,
+            "bh_pct": -23.664
+          },
+          {
+            "date": "2026-04-08",
+            "price": 2308984.02,
+            "grid_pct": -1.108,
+            "bh_pct": -21.383
+          },
+          {
+            "date": "2026-04-09",
+            "price": 2280500.05,
+            "grid_pct": -1.447,
+            "bh_pct": -22.353
+          },
+          {
+            "date": "2026-04-10",
+            "price": 2302556.19,
+            "grid_pct": -1.16,
+            "bh_pct": -21.602
+          },
+          {
+            "date": "2026-04-11",
+            "price": 2333971.98,
+            "grid_pct": -0.785,
+            "bh_pct": -20.532
+          },
+          {
+            "date": "2026-04-12",
+            "price": 2342000.01,
+            "grid_pct": -0.696,
+            "bh_pct": -20.259
+          },
+          {
+            "date": "2026-04-13",
+            "price": 2289735.17,
+            "grid_pct": -1.305,
+            "bh_pct": -22.038
+          },
+          {
+            "date": "2026-04-14",
+            "price": 2385674.94,
+            "grid_pct": -0.208,
+            "bh_pct": -18.772
+          },
+          {
+            "date": "2026-04-15",
+            "price": 2380354.41,
+            "grid_pct": -0.25,
+            "bh_pct": -18.953
+          },
+          {
+            "date": "2026-04-16",
+            "price": 2398564.13,
+            "grid_pct": -0.057,
+            "bh_pct": -18.333
+          },
+          {
+            "date": "2026-04-17",
+            "price": 2406106.19,
+            "grid_pct": 0.03,
+            "bh_pct": -18.076
+          },
+          {
+            "date": "2026-04-18",
+            "price": 2462400.79,
+            "grid_pct": 0.566,
+            "bh_pct": -16.159
+          },
+          {
+            "date": "2026-04-19",
+            "price": 2430986.68,
+            "grid_pct": 0.285,
+            "bh_pct": -17.229
+          },
+          {
+            "date": "2026-04-20",
+            "price": 2376442.72,
+            "grid_pct": -0.244,
+            "bh_pct": -19.086
+          },
+          {
+            "date": "2026-04-21",
+            "price": 2430000.01,
+            "grid_pct": 0.297,
+            "bh_pct": -17.263
+          },
+          {
+            "date": "2026-04-22",
+            "price": 2455380.78,
+            "grid_pct": 0.533,
+            "bh_pct": -16.398
+          },
+          {
+            "date": "2026-04-23",
+            "price": 2521566.92,
+            "grid_pct": 1.088,
+            "bh_pct": -14.145
+          },
+          {
+            "date": "2026-04-24",
+            "price": 2538126.91,
+            "grid_pct": 1.219,
+            "bh_pct": -13.581
+          },
+          {
+            "date": "2026-04-25",
+            "price": 2506500.21,
+            "grid_pct": 0.982,
+            "bh_pct": -14.658
+          },
+          {
+            "date": "2026-04-26",
+            "price": 2509000.0,
+            "grid_pct": 1.001,
+            "bh_pct": -14.573
+          },
+          {
+            "date": "2026-04-27",
+            "price": 2547999.99,
+            "grid_pct": 1.293,
+            "bh_pct": -13.245
+          },
+          {
+            "date": "2026-04-28",
+            "price": 2503693.23,
+            "grid_pct": 0.971,
+            "bh_pct": -14.753
+          },
+          {
+            "date": "2026-04-29",
+            "price": 2477777.76,
+            "grid_pct": 0.761,
+            "bh_pct": -15.636
+          },
+          {
+            "date": "2026-04-30",
+            "price": 2483059.04,
+            "grid_pct": 0.816,
+            "bh_pct": -15.456
+          },
+          {
+            "date": "2026-05-01",
+            "price": 2483193.03,
+            "grid_pct": 0.833,
+            "bh_pct": -15.451
+          },
+          {
+            "date": "2026-05-02",
+            "price": 2539335.19,
+            "grid_pct": 1.278,
+            "bh_pct": -13.54
+          },
+          {
+            "date": "2026-05-03",
+            "price": 2543305.0,
+            "grid_pct": 1.306,
+            "bh_pct": -13.405
+          },
+          {
+            "date": "2026-05-04",
+            "price": 2543404.88,
+            "grid_pct": 1.311,
+            "bh_pct": -13.401
+          },
+          {
+            "date": "2026-05-05",
+            "price": 2607335.55,
+            "grid_pct": 1.744,
+            "bh_pct": -11.225
+          },
+          {
+            "date": "2026-05-06",
+            "price": 2626650.22,
+            "grid_pct": 1.858,
+            "bh_pct": -10.567
+          },
+          {
+            "date": "2026-05-07",
+            "price": 2628720.94,
+            "grid_pct": 1.871,
+            "bh_pct": -10.496
+          },
+          {
+            "date": "2026-05-08",
+            "price": 2587322.18,
+            "grid_pct": 1.632,
+            "bh_pct": -11.906
+          },
+          {
+            "date": "2026-05-09",
+            "price": 2599999.0,
+            "grid_pct": 1.719,
+            "bh_pct": -11.474
+          },
+          {
+            "date": "2026-05-10",
+            "price": 2607093.15,
+            "grid_pct": 1.763,
+            "bh_pct": -11.233
+          },
+          {
+            "date": "2026-05-11",
+            "price": 2655721.99,
+            "grid_pct": 2.037,
+            "bh_pct": -9.577
+          },
+          {
+            "date": "2026-05-12",
+            "price": 2637362.2,
+            "grid_pct": 1.944,
+            "bh_pct": -10.202
+          },
+          {
+            "date": "2026-05-13",
+            "price": 2601000.0,
+            "grid_pct": 1.742,
+            "bh_pct": -11.44
+          },
+          {
+            "date": "2026-05-14",
+            "price": 2568427.25,
+            "grid_pct": 1.541,
+            "bh_pct": -12.549
+          },
+          {
+            "date": "2026-05-15",
+            "price": 2622753.09,
+            "grid_pct": 1.901,
+            "bh_pct": -10.7
+          },
+          {
+            "date": "2026-05-16",
+            "price": 2571459.99,
+            "grid_pct": 1.596,
+            "bh_pct": -12.446
+          },
+          {
+            "date": "2026-05-17",
+            "price": 2539342.88,
+            "grid_pct": 1.376,
+            "bh_pct": -13.54
+          },
+          {
+            "date": "2026-05-18",
+            "price": 2530499.79,
+            "grid_pct": 1.315,
+            "bh_pct": -13.841
+          },
+          {
+            "date": "2026-05-19",
+            "price": 2500799.98,
+            "grid_pct": 1.088,
+            "bh_pct": -14.852
+          },
+          {
+            "date": "2026-05-20",
+            "price": 2509780.97,
+            "grid_pct": 1.161,
+            "bh_pct": -14.546
+          },
+          {
+            "date": "2026-05-21",
+            "price": 2520862.24,
+            "grid_pct": 1.246,
+            "bh_pct": -14.169
+          },
+          {
+            "date": "2026-05-22",
+            "price": 2527420.98,
+            "grid_pct": 1.301,
+            "bh_pct": -13.945
+          },
+          {
+            "date": "2026-05-23",
+            "price": 2464627.6,
+            "grid_pct": 0.798,
+            "bh_pct": -16.084
+          },
+          {
+            "date": "2026-05-24",
+            "price": 2497329.19,
+            "grid_pct": 1.079,
+            "bh_pct": -14.97
+          },
+          {
+            "date": "2026-05-25",
+            "price": 2501851.99,
+            "grid_pct": 1.135,
+            "bh_pct": -14.816
+          },
+          {
+            "date": "2026-05-26",
+            "price": 2508488.4,
+            "grid_pct": 1.19,
+            "bh_pct": -14.59
+          },
+          {
+            "date": "2026-05-27",
+            "price": 2472399.98,
+            "grid_pct": 0.904,
+            "bh_pct": -15.819
+          },
+          {
+            "date": "2026-05-28",
+            "price": 2426296.03,
+            "grid_pct": 0.494,
+            "bh_pct": -17.389
+          },
+          {
+            "date": "2026-05-29",
+            "price": 2397204.99,
+            "grid_pct": 0.217,
+            "bh_pct": -18.379
+          },
+          {
+            "date": "2026-05-30",
+            "price": 2392706.87,
+            "grid_pct": 0.177,
+            "bh_pct": -18.532
+          },
+          {
+            "date": "2026-05-31",
+            "price": 2407012.2,
+            "grid_pct": 0.322,
+            "bh_pct": -18.045
+          },
+          {
+            "date": "2026-06-01",
+            "price": 2398651.86,
+            "grid_pct": 0.237,
+            "bh_pct": -18.33
+          },
+          {
+            "date": "2026-06-02",
+            "price": 2325000.0,
+            "grid_pct": -0.55,
+            "bh_pct": -20.838
+          },
+          {
+            "date": "2026-06-03",
+            "price": 2186937.54,
+            "grid_pct": -2.324,
+            "bh_pct": -25.538
+          },
+          {
+            "date": "2026-06-04",
+            "price": 2105486.27,
+            "grid_pct": -3.556,
+            "bh_pct": -28.312
+          },
+          {
+            "date": "2026-06-05",
+            "price": 2085407.93,
+            "grid_pct": -3.839,
+            "bh_pct": -28.995
+          },
+          {
+            "date": "2026-06-06",
+            "price": 2022411.0,
+            "grid_pct": -4.899,
+            "bh_pct": -31.14
+          },
+          {
+            "date": "2026-06-07",
+            "price": 2004298.38,
+            "grid_pct": -5.236,
+            "bh_pct": -31.757
+          },
+          {
+            "date": "2026-06-08",
+            "price": 2079934.92,
+            "grid_pct": -3.848,
+            "bh_pct": -29.182
+          },
+          {
+            "date": "2026-06-09",
+            "price": 2073463.62,
+            "grid_pct": -3.952,
+            "bh_pct": -29.402
+          },
+          {
+            "date": "2026-06-10",
+            "price": 2029010.21,
+            "grid_pct": -4.728,
+            "bh_pct": -30.916
+          },
+          {
+            "date": "2026-06-11",
+            "price": 2025805.04,
+            "grid_pct": -4.772,
+            "bh_pct": -31.025
+          },
+          {
+            "date": "2026-06-12",
+            "price": 2082453.87,
+            "grid_pct": -3.76,
+            "bh_pct": -29.096
+          },
+          {
+            "date": "2026-06-13",
+            "price": 2085709.98,
+            "grid_pct": -3.693,
+            "bh_pct": -28.985
+          },
+          {
+            "date": "2026-06-14",
+            "price": 2115780.73,
+            "grid_pct": -3.191,
+            "bh_pct": -27.961
+          },
+          {
+            "date": "2026-06-15",
+            "price": 2145689.37,
+            "grid_pct": -2.706,
+            "bh_pct": -26.943
+          }
+        ],
+        "pair": "BTC_THB",
+        "currency": "THB",
+        "source": "Bitkub"
+      }
+    ]
+  },
+  {
+    "fee": 0.00125,
+    "stake": 3000000,
+    "currency": "THB",
+    "source": "Bitkub",
+    "backtest_start": "2026-01-19",
+    "backtest_end": "2026-06-15",
+    "total_trades": 507,
+    "total_profit": 138777.55,
+    "profit_pct": 4.63,
+    "total_fee": 47992.34,
+    "revenue_per_month": 28543.17,
+    "pairs": [
+      {
+        "stake_total": 3000000,
+        "fee": 0.00125,
+        "ref_price": 2937000.02,
+        "last_price": 2161229.96,
+        "grid_min": 2000000,
+        "grid_max": 4000000,
+        "grid_step": 24691.36,
+        "grid_levels": 82,
+        "spacing_pct": 1.2346,
+        "profit_per_grid": 0.309,
+        "actual_min": 1950000.0,
+        "actual_max": 2937000.02,
+        "total_trades": 507,
+        "trades_per_year": 1251,
+        "trades_per_month": 104.3,
+        "wins": 507,
+        "win_pct": 100.0,
+        "total_profit": 138777.55,
+        "profit_pct": 4.63,
+        "apy": 11.42,
+        "total_fee": 47992.34,
+        "volume_per_month": 7891625.51,
+        "revenue_per_month": 28543.17,
+        "total_volume": 38369269.89,
+        "final_wallet": 2004631.2,
+        "coin_slots_held": 31,
+        "cost_of_held": 1134146.34,
+        "unrealized_val": 969471.35,
+        "unrealized_pnl": -164674.99,
+        "net_pnl": -25897.45,
+        "net_pnl_pct": -0.86,
+        "final_equity": 2974102.55,
+        "monthly_revenue": {
+          "2026-01": 10838.65,
+          "2026-02": 71458.04,
+          "2026-03": 24142.18,
+          "2026-04": 12648.03,
+          "2026-05": 8624.11,
+          "2026-06": 11066.53
+        },
+        "snapshots": [
+          {
+            "date": "2026-01-19",
+            "price": 2930000.0,
+            "grid_pct": 0.0,
+            "bh_pct": -0.238
+          },
+          {
+            "date": "2026-01-20",
+            "price": 2901554.98,
+            "grid_pct": -0.007,
+            "bh_pct": -1.207
+          },
+          {
+            "date": "2026-01-21",
+            "price": 2750259.81,
+            "grid_pct": -0.272,
+            "bh_pct": -6.358
+          },
+          {
+            "date": "2026-01-22",
+            "price": 2807348.81,
+            "grid_pct": -0.069,
+            "bh_pct": -4.414
+          },
+          {
+            "date": "2026-01-23",
+            "price": 2786107.24,
+            "grid_pct": -0.108,
+            "bh_pct": -5.138
+          },
+          {
+            "date": "2026-01-24",
+            "price": 2779742.94,
+            "grid_pct": -0.111,
+            "bh_pct": -5.354
+          },
+          {
+            "date": "2026-01-25",
+            "price": 2771015.93,
+            "grid_pct": -0.134,
+            "bh_pct": -5.651
+          },
+          {
+            "date": "2026-01-26",
+            "price": 2695000.0,
+            "grid_pct": -0.396,
+            "bh_pct": -8.24
+          },
+          {
+            "date": "2026-01-27",
+            "price": 2752044.05,
+            "grid_pct": -0.167,
+            "bh_pct": -6.297
+          },
+          {
+            "date": "2026-01-28",
+            "price": 2760000.1,
+            "grid_pct": -0.126,
+            "bh_pct": -6.027
+          },
+          {
+            "date": "2026-01-29",
+            "price": 2772500.0,
+            "grid_pct": -0.082,
+            "bh_pct": -5.601
+          },
+          {
+            "date": "2026-01-30",
+            "price": 2650305.69,
+            "grid_pct": -0.488,
+            "bh_pct": -9.761
+          },
+          {
+            "date": "2026-01-31",
+            "price": 2643593.99,
+            "grid_pct": -0.487,
+            "bh_pct": -9.99
+          },
+          {
+            "date": "2026-02-01",
+            "price": 2478364.88,
+            "grid_pct": -1.414,
+            "bh_pct": -15.616
+          },
+          {
+            "date": "2026-02-02",
+            "price": 2425658.87,
+            "grid_pct": -1.856,
+            "bh_pct": -17.41
+          },
+          {
+            "date": "2026-02-03",
+            "price": 2480266.99,
+            "grid_pct": -1.293,
+            "bh_pct": -15.551
+          },
+          {
+            "date": "2026-02-04",
+            "price": 2394090.32,
+            "grid_pct": -2.047,
+            "bh_pct": -18.485
+          },
+          {
+            "date": "2026-02-05",
+            "price": 2316616.71,
+            "grid_pct": -2.693,
+            "bh_pct": -21.123
+          },
+          {
+            "date": "2026-02-06",
+            "price": 2049980.29,
+            "grid_pct": -6.256,
+            "bh_pct": -30.202
+          },
+          {
+            "date": "2026-02-07",
+            "price": 2253013.39,
+            "grid_pct": -2.099,
+            "bh_pct": -23.289
+          },
+          {
+            "date": "2026-02-08",
+            "price": 2191045.28,
+            "grid_pct": -2.863,
+            "bh_pct": -25.399
+          },
+          {
+            "date": "2026-02-09",
+            "price": 2217126.47,
+            "grid_pct": -2.468,
+            "bh_pct": -24.511
+          },
+          {
+            "date": "2026-02-10",
+            "price": 2185251.03,
+            "grid_pct": -2.875,
+            "bh_pct": -25.596
+          },
+          {
+            "date": "2026-02-11",
+            "price": 2149287.21,
+            "grid_pct": -3.395,
+            "bh_pct": -26.82
+          },
+          {
+            "date": "2026-02-12",
+            "price": 2084565.27,
+            "grid_pct": -4.393,
+            "bh_pct": -29.024
+          },
+          {
+            "date": "2026-02-13",
+            "price": 2057658.37,
+            "grid_pct": -4.841,
+            "bh_pct": -29.94
+          },
+          {
+            "date": "2026-02-14",
+            "price": 2137812.4,
+            "grid_pct": -3.401,
+            "bh_pct": -27.211
+          },
+          {
+            "date": "2026-02-15",
+            "price": 2174394.41,
+            "grid_pct": -2.815,
+            "bh_pct": -25.965
+          },
+          {
+            "date": "2026-02-16",
+            "price": 2139589.8,
+            "grid_pct": -3.343,
+            "bh_pct": -27.151
+          },
+          {
+            "date": "2026-02-17",
+            "price": 2142169.28,
+            "grid_pct": -3.264,
+            "bh_pct": -27.063
+          },
+          {
+            "date": "2026-02-18",
+            "price": 2112101.55,
+            "grid_pct": -3.735,
+            "bh_pct": -28.086
+          },
+          {
+            "date": "2026-02-19",
+            "price": 2079434.38,
+            "grid_pct": -4.278,
+            "bh_pct": -29.199
+          },
+          {
+            "date": "2026-02-20",
+            "price": 2089004.96,
+            "grid_pct": -4.103,
+            "bh_pct": -28.873
+          },
+          {
+            "date": "2026-02-21",
+            "price": 2115767.44,
+            "grid_pct": -3.633,
+            "bh_pct": -27.962
+          },
+          {
+            "date": "2026-02-22",
+            "price": 2116532.47,
+            "grid_pct": -3.618,
+            "bh_pct": -27.936
+          },
+          {
+            "date": "2026-02-23",
+            "price": 2102031.15,
+            "grid_pct": -3.852,
+            "bh_pct": -28.429
+          },
+          {
+            "date": "2026-02-24",
+            "price": 2009056.8,
+            "grid_pct": -5.437,
+            "bh_pct": -31.595
+          },
+          {
+            "date": "2026-02-25",
+            "price": 1996998.97,
+            "grid_pct": -5.664,
+            "bh_pct": -32.005
+          },
+          {
+            "date": "2026-02-26",
+            "price": 2109786.68,
+            "grid_pct": -3.612,
+            "bh_pct": -28.165
+          },
+          {
+            "date": "2026-02-27",
+            "price": 2097991.06,
+            "grid_pct": -3.794,
+            "bh_pct": -28.567
+          },
+          {
+            "date": "2026-02-28",
+            "price": 2055767.31,
+            "grid_pct": -4.498,
+            "bh_pct": -30.005
+          },
+          {
+            "date": "2026-03-01",
+            "price": 2091428.69,
+            "grid_pct": -3.851,
+            "bh_pct": -28.79
+          },
+          {
+            "date": "2026-03-02",
+            "price": 2056242.21,
+            "grid_pct": -4.438,
+            "bh_pct": -29.988
+          },
+          {
+            "date": "2026-03-03",
+            "price": 2153966.14,
+            "grid_pct": -2.706,
+            "bh_pct": -26.661
+          },
+          {
+            "date": "2026-03-04",
+            "price": 2151739.43,
+            "grid_pct": -2.7,
+            "bh_pct": -26.737
+          },
+          {
+            "date": "2026-03-05",
+            "price": 2291153.42,
+            "grid_pct": -0.702,
+            "bh_pct": -21.99
+          },
+          {
+            "date": "2026-03-06",
+            "price": 2249348.15,
+            "grid_pct": -1.219,
+            "bh_pct": -23.413
+          },
+          {
+            "date": "2026-03-07",
+            "price": 2171503.27,
+            "grid_pct": -2.303,
+            "bh_pct": -26.064
+          },
+          {
+            "date": "2026-03-08",
+            "price": 2148325.46,
+            "grid_pct": -2.651,
+            "bh_pct": -26.853
+          },
+          {
+            "date": "2026-03-09",
+            "price": 2111221.23,
+            "grid_pct": -3.236,
+            "bh_pct": -28.116
+          },
+          {
+            "date": "2026-03-10",
+            "price": 2169107.1,
+            "grid_pct": -2.29,
+            "bh_pct": -26.145
+          },
+          {
+            "date": "2026-03-11",
+            "price": 2206901.39,
+            "grid_pct": -1.695,
+            "bh_pct": -24.859
+          },
+          {
+            "date": "2026-03-12",
+            "price": 2238462.94,
+            "grid_pct": -1.201,
+            "bh_pct": -23.784
+          },
+          {
+            "date": "2026-03-13",
+            "price": 2259695.26,
+            "grid_pct": -0.912,
+            "bh_pct": -23.061
+          },
+          {
+            "date": "2026-03-14",
+            "price": 2288515.79,
+            "grid_pct": -0.503,
+            "bh_pct": -22.08
+          },
+          {
+            "date": "2026-03-15",
+            "price": 2300792.36,
+            "grid_pct": -0.353,
+            "bh_pct": -21.662
+          },
+          {
+            "date": "2026-03-16",
+            "price": 2360935.25,
+            "grid_pct": 0.348,
+            "bh_pct": -19.614
+          },
+          {
+            "date": "2026-03-17",
+            "price": 2422966.93,
+            "grid_pct": 0.998,
+            "bh_pct": -17.502
+          },
+          {
+            "date": "2026-03-18",
+            "price": 2390423.93,
+            "grid_pct": 0.714,
+            "bh_pct": -18.61
+          },
+          {
+            "date": "2026-03-19",
+            "price": 2333956.99,
+            "grid_pct": 0.117,
+            "bh_pct": -20.533
+          },
+          {
+            "date": "2026-03-20",
+            "price": 2272285.7,
+            "grid_pct": -0.602,
+            "bh_pct": -22.632
+          },
+          {
+            "date": "2026-03-21",
+            "price": 2319955.31,
+            "grid_pct": -0.002,
+            "bh_pct": -21.009
+          },
+          {
+            "date": "2026-03-22",
+            "price": 2266113.24,
+            "grid_pct": -0.654,
+            "bh_pct": -22.843
+          },
+          {
+            "date": "2026-03-23",
+            "price": 2239765.27,
+            "grid_pct": -0.996,
+            "bh_pct": -23.74
+          },
+          {
+            "date": "2026-03-24",
+            "price": 2306067.34,
+            "grid_pct": -0.098,
+            "bh_pct": -21.482
+          },
+          {
+            "date": "2026-03-25",
+            "price": 2294103.47,
+            "grid_pct": -0.226,
+            "bh_pct": -21.89
+          },
+          {
+            "date": "2026-03-26",
+            "price": 2337489.7,
+            "grid_pct": 0.301,
+            "bh_pct": -20.412
+          },
+          {
+            "date": "2026-03-27",
+            "price": 2267088.79,
+            "grid_pct": -0.543,
+            "bh_pct": -22.809
+          },
+          {
+            "date": "2026-03-28",
+            "price": 2188188.92,
+            "grid_pct": -1.605,
+            "bh_pct": -25.496
+          },
+          {
+            "date": "2026-03-29",
+            "price": 2190240.59,
+            "grid_pct": -1.572,
+            "bh_pct": -25.426
+          },
+          {
+            "date": "2026-03-30",
+            "price": 2178602.64,
+            "grid_pct": -1.729,
+            "bh_pct": -25.822
+          },
+          {
+            "date": "2026-03-31",
+            "price": 2191108.01,
+            "grid_pct": -1.531,
+            "bh_pct": -25.396
+          },
+          {
+            "date": "2026-04-01",
+            "price": 2221462.15,
+            "grid_pct": -1.077,
+            "bh_pct": -24.363
+          },
+          {
+            "date": "2026-04-02",
+            "price": 2220391.11,
+            "grid_pct": -1.082,
+            "bh_pct": -24.399
+          },
+          {
+            "date": "2026-04-03",
+            "price": 2183071.85,
+            "grid_pct": -1.59,
+            "bh_pct": -25.67
+          },
+          {
+            "date": "2026-04-04",
+            "price": 2184746.24,
+            "grid_pct": -1.561,
+            "bh_pct": -25.613
+          },
+          {
+            "date": "2026-04-05",
+            "price": 2190677.17,
+            "grid_pct": -1.471,
+            "bh_pct": -25.411
+          },
+          {
+            "date": "2026-04-06",
+            "price": 2255445.25,
+            "grid_pct": -0.566,
+            "bh_pct": -23.206
+          },
+          {
+            "date": "2026-04-07",
+            "price": 2241999.69,
+            "grid_pct": -0.736,
+            "bh_pct": -23.664
+          },
+          {
+            "date": "2026-04-08",
+            "price": 2308984.02,
+            "grid_pct": 0.137,
+            "bh_pct": -21.383
+          },
+          {
+            "date": "2026-04-09",
+            "price": 2280500.05,
+            "grid_pct": -0.198,
+            "bh_pct": -22.353
+          },
+          {
+            "date": "2026-04-10",
+            "price": 2302556.19,
+            "grid_pct": 0.098,
+            "bh_pct": -21.602
+          },
+          {
+            "date": "2026-04-11",
+            "price": 2333971.98,
+            "grid_pct": 0.477,
+            "bh_pct": -20.532
+          },
+          {
+            "date": "2026-04-12",
+            "price": 2342000.01,
+            "grid_pct": 0.567,
+            "bh_pct": -20.259
+          },
+          {
+            "date": "2026-04-13",
+            "price": 2289735.17,
+            "grid_pct": -0.041,
+            "bh_pct": -22.038
+          },
+          {
+            "date": "2026-04-14",
+            "price": 2385674.94,
+            "grid_pct": 1.064,
+            "bh_pct": -18.772
+          },
+          {
+            "date": "2026-04-15",
+            "price": 2380354.41,
+            "grid_pct": 1.03,
+            "bh_pct": -18.953
+          },
+          {
+            "date": "2026-04-16",
+            "price": 2398564.13,
+            "grid_pct": 1.228,
+            "bh_pct": -18.333
+          },
+          {
+            "date": "2026-04-17",
+            "price": 2406106.19,
+            "grid_pct": 1.321,
+            "bh_pct": -18.076
+          },
+          {
+            "date": "2026-04-18",
+            "price": 2462400.79,
+            "grid_pct": 1.865,
+            "bh_pct": -16.159
+          },
+          {
+            "date": "2026-04-19",
+            "price": 2430986.68,
+            "grid_pct": 1.586,
+            "bh_pct": -17.229
+          },
+          {
+            "date": "2026-04-20",
+            "price": 2376442.72,
+            "grid_pct": 1.061,
+            "bh_pct": -19.086
+          },
+          {
+            "date": "2026-04-21",
+            "price": 2430000.01,
+            "grid_pct": 1.61,
+            "bh_pct": -17.263
+          },
+          {
+            "date": "2026-04-22",
+            "price": 2455380.78,
+            "grid_pct": 1.849,
+            "bh_pct": -16.398
+          },
+          {
+            "date": "2026-04-23",
+            "price": 2521566.92,
+            "grid_pct": 2.412,
+            "bh_pct": -14.145
+          },
+          {
+            "date": "2026-04-24",
+            "price": 2538126.91,
+            "grid_pct": 2.546,
+            "bh_pct": -13.581
+          },
+          {
+            "date": "2026-04-25",
+            "price": 2506500.21,
+            "grid_pct": 2.312,
+            "bh_pct": -14.658
+          },
+          {
+            "date": "2026-04-26",
+            "price": 2509000.0,
+            "grid_pct": 2.332,
+            "bh_pct": -14.573
+          },
+          {
+            "date": "2026-04-27",
+            "price": 2547999.99,
+            "grid_pct": 2.625,
+            "bh_pct": -13.245
+          },
+          {
+            "date": "2026-04-28",
+            "price": 2503693.23,
+            "grid_pct": 2.309,
+            "bh_pct": -14.753
+          },
+          {
+            "date": "2026-04-29",
+            "price": 2477777.76,
+            "grid_pct": 2.101,
+            "bh_pct": -15.636
+          },
+          {
+            "date": "2026-04-30",
+            "price": 2483059.04,
+            "grid_pct": 2.162,
+            "bh_pct": -15.456
+          },
+          {
+            "date": "2026-05-01",
+            "price": 2483193.03,
+            "grid_pct": 2.189,
+            "bh_pct": -15.451
+          },
+          {
+            "date": "2026-05-02",
+            "price": 2539335.19,
+            "grid_pct": 2.64,
+            "bh_pct": -13.54
+          },
+          {
+            "date": "2026-05-03",
+            "price": 2543305.0,
+            "grid_pct": 2.669,
+            "bh_pct": -13.405
+          },
+          {
+            "date": "2026-05-04",
+            "price": 2543404.88,
+            "grid_pct": 2.677,
+            "bh_pct": -13.401
+          },
+          {
+            "date": "2026-05-05",
+            "price": 2607335.55,
+            "grid_pct": 3.121,
+            "bh_pct": -11.225
+          },
+          {
+            "date": "2026-05-06",
+            "price": 2626650.22,
+            "grid_pct": 3.237,
+            "bh_pct": -10.567
+          },
+          {
+            "date": "2026-05-07",
+            "price": 2628720.94,
+            "grid_pct": 3.251,
+            "bh_pct": -10.496
+          },
+          {
+            "date": "2026-05-08",
+            "price": 2587322.18,
+            "grid_pct": 3.017,
+            "bh_pct": -11.906
+          },
+          {
+            "date": "2026-05-09",
+            "price": 2599999.0,
+            "grid_pct": 3.11,
+            "bh_pct": -11.474
+          },
+          {
+            "date": "2026-05-10",
+            "price": 2607093.15,
+            "grid_pct": 3.154,
+            "bh_pct": -11.233
+          },
+          {
+            "date": "2026-05-11",
+            "price": 2655721.99,
+            "grid_pct": 3.434,
+            "bh_pct": -9.577
+          },
+          {
+            "date": "2026-05-12",
+            "price": 2637362.2,
+            "grid_pct": 3.345,
+            "bh_pct": -10.202
+          },
+          {
+            "date": "2026-05-13",
+            "price": 2601000.0,
+            "grid_pct": 3.146,
+            "bh_pct": -11.44
+          },
+          {
+            "date": "2026-05-14",
+            "price": 2568427.25,
+            "grid_pct": 2.949,
+            "bh_pct": -12.549
+          },
+          {
+            "date": "2026-05-15",
+            "price": 2622753.09,
+            "grid_pct": 3.327,
+            "bh_pct": -10.7
+          },
+          {
+            "date": "2026-05-16",
+            "price": 2571459.99,
+            "grid_pct": 3.028,
+            "bh_pct": -12.446
+          },
+          {
+            "date": "2026-05-17",
+            "price": 2539342.88,
+            "grid_pct": 2.81,
+            "bh_pct": -13.54
+          },
+          {
+            "date": "2026-05-18",
+            "price": 2530499.79,
+            "grid_pct": 2.75,
+            "bh_pct": -13.841
+          },
+          {
+            "date": "2026-05-19",
+            "price": 2500799.98,
+            "grid_pct": 2.525,
+            "bh_pct": -14.852
+          },
+          {
+            "date": "2026-05-20",
+            "price": 2509780.97,
+            "grid_pct": 2.597,
+            "bh_pct": -14.546
+          },
+          {
+            "date": "2026-05-21",
+            "price": 2520862.24,
+            "grid_pct": 2.684,
+            "bh_pct": -14.169
+          },
+          {
+            "date": "2026-05-22",
+            "price": 2527420.98,
+            "grid_pct": 2.742,
+            "bh_pct": -13.945
+          },
+          {
+            "date": "2026-05-23",
+            "price": 2464627.6,
+            "grid_pct": 2.242,
+            "bh_pct": -16.084
+          },
+          {
+            "date": "2026-05-24",
+            "price": 2497329.19,
+            "grid_pct": 2.528,
+            "bh_pct": -14.97
+          },
+          {
+            "date": "2026-05-25",
+            "price": 2501851.99,
+            "grid_pct": 2.596,
+            "bh_pct": -14.816
+          },
+          {
+            "date": "2026-05-26",
+            "price": 2508488.4,
+            "grid_pct": 2.653,
+            "bh_pct": -14.59
+          },
+          {
+            "date": "2026-05-27",
+            "price": 2472399.98,
+            "grid_pct": 2.372,
+            "bh_pct": -15.819
+          },
+          {
+            "date": "2026-05-28",
+            "price": 2426296.03,
+            "grid_pct": 1.965,
+            "bh_pct": -17.389
+          },
+          {
+            "date": "2026-05-29",
+            "price": 2397204.99,
+            "grid_pct": 1.692,
+            "bh_pct": -18.379
+          },
+          {
+            "date": "2026-05-30",
+            "price": 2392706.87,
+            "grid_pct": 1.655,
+            "bh_pct": -18.532
+          },
+          {
+            "date": "2026-05-31",
+            "price": 2407012.2,
+            "grid_pct": 1.8,
+            "bh_pct": -18.045
+          },
+          {
+            "date": "2026-06-01",
+            "price": 2398651.86,
+            "grid_pct": 1.715,
+            "bh_pct": -18.33
+          },
+          {
+            "date": "2026-06-02",
+            "price": 2325000.0,
+            "grid_pct": 0.931,
+            "bh_pct": -20.838
+          },
+          {
+            "date": "2026-06-03",
+            "price": 2186937.54,
+            "grid_pct": -0.83,
+            "bh_pct": -25.538
+          },
+          {
+            "date": "2026-06-04",
+            "price": 2105486.27,
+            "grid_pct": -2.047,
+            "bh_pct": -28.312
+          },
+          {
+            "date": "2026-06-05",
+            "price": 2085407.93,
+            "grid_pct": -2.308,
+            "bh_pct": -28.995
+          },
+          {
+            "date": "2026-06-06",
+            "price": 2022411.0,
+            "grid_pct": -3.348,
+            "bh_pct": -31.14
+          },
+          {
+            "date": "2026-06-07",
+            "price": 2004298.38,
+            "grid_pct": -3.682,
+            "bh_pct": -31.757
+          },
+          {
+            "date": "2026-06-08",
+            "price": 2079934.92,
+            "grid_pct": -2.282,
+            "bh_pct": -29.182
+          },
+          {
+            "date": "2026-06-09",
+            "price": 2073463.62,
+            "grid_pct": -2.383,
+            "bh_pct": -29.402
+          },
+          {
+            "date": "2026-06-10",
+            "price": 2029010.21,
+            "grid_pct": -3.153,
+            "bh_pct": -30.916
+          },
+          {
+            "date": "2026-06-11",
+            "price": 2025805.04,
+            "grid_pct": -3.191,
+            "bh_pct": -31.025
+          },
+          {
+            "date": "2026-06-12",
+            "price": 2082453.87,
+            "grid_pct": -2.175,
+            "bh_pct": -29.096
+          },
+          {
+            "date": "2026-06-13",
+            "price": 2085709.98,
+            "grid_pct": -2.103,
+            "bh_pct": -28.985
+          },
+          {
+            "date": "2026-06-14",
+            "price": 2115780.73,
+            "grid_pct": -1.599,
+            "bh_pct": -27.961
+          },
+          {
+            "date": "2026-06-15",
+            "price": 2145689.37,
+            "grid_pct": -1.109,
+            "bh_pct": -26.943
+          }
+        ],
+        "pair": "BTC_THB",
+        "currency": "THB",
+        "source": "Bitkub"
+      }
+    ]
+  },
+  {
+    "fee": 0.0025,
+    "stake": 94786,
+    "currency": "USDT",
+    "source": "Binance",
+    "backtest_start": "2026-01-19",
+    "backtest_end": "2026-06-15",
+    "total_trades": 382,
+    "total_profit": 2144.24,
+    "profit_pct": 2.26,
+    "total_fee": 2319.99,
+    "revenue_per_month": 441.02,
+    "pairs": [
+      {
+        "stake_total": 94786,
+        "fee": 0.0025,
+        "ref_price": 93673.14,
+        "last_price": 66328.74,
+        "grid_min": 63190,
+        "grid_max": 126381,
+        "grid_step": 780.14,
+        "grid_levels": 82,
+        "spacing_pct": 1.2346,
+        "profit_per_grid": 0.617,
+        "actual_min": 59130.91,
+        "actual_max": 93673.14,
+        "total_trades": 382,
+        "trades_per_year": 943,
+        "trades_per_month": 78.6,
+        "wins": 382,
+        "win_pct": 100.0,
+        "total_profit": 2144.24,
+        "profit_pct": 2.26,
+        "apy": 5.58,
+        "total_fee": 2319.99,
+        "volume_per_month": 190618.12,
+        "revenue_per_month": 441.02,
+        "total_volume": 926789.81,
+        "final_wallet": 55316.87,
+        "coin_slots_held": 36,
+        "cost_of_held": 41613.37,
+        "unrealized_val": 34774.7,
+        "unrealized_pnl": -6838.66,
+        "net_pnl": -4694.43,
+        "net_pnl_pct": -4.95,
+        "final_equity": 90091.57,
+        "monthly_revenue": {
+          "2026-01": 138.12,
+          "2026-02": 829.64,
+          "2026-03": 567.07,
+          "2026-04": 304.49,
+          "2026-05": 168.15,
+          "2026-06": 136.77
+        },
+        "snapshots": [
+          {
+            "date": "2026-01-19",
+            "price": 93365.03,
+            "grid_pct": -0.007,
+            "bh_pct": -0.329
+          },
+          {
+            "date": "2026-01-20",
+            "price": 92600.01,
+            "grid_pct": -0.021,
+            "bh_pct": -1.146
+          },
+          {
+            "date": "2026-01-21",
+            "price": 88533.01,
+            "grid_pct": -0.274,
+            "bh_pct": -5.487
+          },
+          {
+            "date": "2026-01-22",
+            "price": 89516.66,
+            "grid_pct": -0.165,
+            "bh_pct": -4.437
+          },
+          {
+            "date": "2026-01-23",
+            "price": 89539.18,
+            "grid_pct": -0.16,
+            "bh_pct": -4.413
+          },
+          {
+            "date": "2026-01-24",
+            "price": 89600.26,
+            "grid_pct": -0.145,
+            "bh_pct": -4.348
+          },
+          {
+            "date": "2026-01-25",
+            "price": 89238.48,
+            "grid_pct": -0.174,
+            "bh_pct": -4.734
+          },
+          {
+            "date": "2026-01-26",
+            "price": 86650.86,
+            "grid_pct": -0.452,
+            "bh_pct": -7.497
+          },
+          {
+            "date": "2026-01-27",
+            "price": 88294.94,
+            "grid_pct": -0.249,
+            "bh_pct": -5.741
+          },
+          {
+            "date": "2026-01-28",
+            "price": 89249.76,
+            "grid_pct": -0.148,
+            "bh_pct": -4.722
+          },
+          {
+            "date": "2026-01-29",
+            "price": 89324.24,
+            "grid_pct": -0.131,
+            "bh_pct": -4.643
+          },
+          {
+            "date": "2026-01-30",
+            "price": 84701.76,
+            "grid_pct": -0.705,
+            "bh_pct": -9.577
+          },
+          {
+            "date": "2026-01-31",
+            "price": 84229.99,
+            "grid_pct": -0.756,
+            "bh_pct": -10.081
+          },
+          {
+            "date": "2026-02-01",
+            "price": 78683.61,
+            "grid_pct": -1.988,
+            "bh_pct": -16.002
+          },
+          {
+            "date": "2026-02-02",
+            "price": 76956.72,
+            "grid_pct": -2.485,
+            "bh_pct": -17.845
+          },
+          {
+            "date": "2026-02-03",
+            "price": 78710.04,
+            "grid_pct": -1.905,
+            "bh_pct": -15.974
+          },
+          {
+            "date": "2026-02-04",
+            "price": 75693.03,
+            "grid_pct": -2.804,
+            "bh_pct": -19.195
+          },
+          {
+            "date": "2026-02-05",
+            "price": 73165.0,
+            "grid_pct": -3.692,
+            "bh_pct": -21.893
+          },
+          {
+            "date": "2026-02-06",
+            "price": 63047.62,
+            "grid_pct": -8.724,
+            "bh_pct": -32.694
+          },
+          {
+            "date": "2026-02-07",
+            "price": 70340.41,
+            "grid_pct": -4.657,
+            "bh_pct": -24.909
+          },
+          {
+            "date": "2026-02-08",
+            "price": 69224.88,
+            "grid_pct": -5.137,
+            "bh_pct": -26.1
+          },
+          {
+            "date": "2026-02-09",
+            "price": 70366.01,
+            "grid_pct": -4.582,
+            "bh_pct": -24.881
+          },
+          {
+            "date": "2026-02-10",
+            "price": 70189.28,
+            "grid_pct": -4.633,
+            "bh_pct": -25.07
+          },
+          {
+            "date": "2026-02-11",
+            "price": 68813.64,
+            "grid_pct": -5.266,
+            "bh_pct": -26.539
+          },
+          {
+            "date": "2026-02-12",
+            "price": 67070.59,
+            "grid_pct": -6.123,
+            "bh_pct": -28.399
+          },
+          {
+            "date": "2026-02-13",
+            "price": 66187.44,
+            "grid_pct": -6.574,
+            "bh_pct": -29.342
+          },
+          {
+            "date": "2026-02-14",
+            "price": 68845.34,
+            "grid_pct": -5.162,
+            "bh_pct": -26.505
+          },
+          {
+            "date": "2026-02-15",
+            "price": 69830.68,
+            "grid_pct": -4.672,
+            "bh_pct": -25.453
+          },
+          {
+            "date": "2026-02-16",
+            "price": 68751.76,
+            "grid_pct": -5.183,
+            "bh_pct": -26.605
+          },
+          {
+            "date": "2026-02-17",
+            "price": 68870.46,
+            "grid_pct": -5.111,
+            "bh_pct": -26.478
+          },
+          {
+            "date": "2026-02-18",
+            "price": 67535.99,
+            "grid_pct": -5.772,
+            "bh_pct": -27.903
+          },
+          {
+            "date": "2026-02-19",
+            "price": 66435.19,
+            "grid_pct": -6.344,
+            "bh_pct": -29.078
+          },
+          {
+            "date": "2026-02-20",
+            "price": 66971.94,
+            "grid_pct": -6.042,
+            "bh_pct": -28.505
+          },
+          {
+            "date": "2026-02-21",
+            "price": 68022.8,
+            "grid_pct": -5.459,
+            "bh_pct": -27.383
+          },
+          {
+            "date": "2026-02-22",
+            "price": 67980.08,
+            "grid_pct": -5.473,
+            "bh_pct": -27.428
+          },
+          {
+            "date": "2026-02-23",
+            "price": 67660.0,
+            "grid_pct": -5.64,
+            "bh_pct": -27.77
+          },
+          {
+            "date": "2026-02-24",
+            "price": 64769.66,
+            "grid_pct": -7.21,
+            "bh_pct": -30.856
+          },
+          {
+            "date": "2026-02-25",
+            "price": 64077.49,
+            "grid_pct": -7.613,
+            "bh_pct": -31.595
+          },
+          {
+            "date": "2026-02-26",
+            "price": 67906.49,
+            "grid_pct": -5.428,
+            "bh_pct": -27.507
+          },
+          {
+            "date": "2026-02-27",
+            "price": 67447.41,
+            "grid_pct": -5.638,
+            "bh_pct": -27.997
+          },
+          {
+            "date": "2026-02-28",
+            "price": 65846.06,
+            "grid_pct": -6.495,
+            "bh_pct": -29.707
+          },
+          {
+            "date": "2026-03-01",
+            "price": 66998.58,
+            "grid_pct": -5.832,
+            "bh_pct": -28.476
+          },
+          {
+            "date": "2026-03-02",
+            "price": 65769.83,
+            "grid_pct": -6.474,
+            "bh_pct": -29.788
+          },
+          {
+            "date": "2026-03-03",
+            "price": 68829.26,
+            "grid_pct": -4.819,
+            "bh_pct": -26.522
+          },
+          {
+            "date": "2026-03-04",
+            "price": 68246.23,
+            "grid_pct": -5.07,
+            "bh_pct": -27.144
+          },
+          {
+            "date": "2026-03-05",
+            "price": 72721.9,
+            "grid_pct": -2.971,
+            "bh_pct": -22.366
+          },
+          {
+            "date": "2026-03-06",
+            "price": 70869.76,
+            "grid_pct": -3.747,
+            "bh_pct": -24.344
+          },
+          {
+            "date": "2026-03-07",
+            "price": 68151.49,
+            "grid_pct": -5.03,
+            "bh_pct": -27.245
+          },
+          {
+            "date": "2026-03-08",
+            "price": 67308.6,
+            "grid_pct": -5.465,
+            "bh_pct": -28.145
+          },
+          {
+            "date": "2026-03-09",
+            "price": 66010.13,
+            "grid_pct": -6.162,
+            "bh_pct": -29.531
+          },
+          {
+            "date": "2026-03-10",
+            "price": 68436.14,
+            "grid_pct": -4.843,
+            "bh_pct": -26.942
+          },
+          {
+            "date": "2026-03-11",
+            "price": 69842.02,
+            "grid_pct": -4.119,
+            "bh_pct": -25.441
+          },
+          {
+            "date": "2026-03-12",
+            "price": 70221.99,
+            "grid_pct": -3.924,
+            "bh_pct": -25.035
+          },
+          {
+            "date": "2026-03-13",
+            "price": 70450.1,
+            "grid_pct": -3.806,
+            "bh_pct": -24.792
+          },
+          {
+            "date": "2026-03-14",
+            "price": 70850.25,
+            "grid_pct": -3.598,
+            "bh_pct": -24.364
+          },
+          {
+            "date": "2026-03-15",
+            "price": 71191.64,
+            "grid_pct": -3.445,
+            "bh_pct": -24.0
+          },
+          {
+            "date": "2026-03-16",
+            "price": 72952.44,
+            "grid_pct": -2.694,
+            "bh_pct": -22.12
+          },
+          {
+            "date": "2026-03-17",
+            "price": 74659.99,
+            "grid_pct": -2.018,
+            "bh_pct": -20.297
+          },
+          {
+            "date": "2026-03-18",
+            "price": 73932.42,
+            "grid_pct": -2.277,
+            "bh_pct": -21.074
+          },
+          {
+            "date": "2026-03-19",
+            "price": 71210.0,
+            "grid_pct": -3.381,
+            "bh_pct": -23.98
+          },
+          {
+            "date": "2026-03-20",
+            "price": 69915.22,
+            "grid_pct": -3.961,
+            "bh_pct": -25.363
+          },
+          {
+            "date": "2026-03-21",
+            "price": 70539.37,
+            "grid_pct": -3.659,
+            "bh_pct": -24.696
+          },
+          {
+            "date": "2026-03-22",
+            "price": 68784.27,
+            "grid_pct": -4.483,
+            "bh_pct": -26.57
+          },
+          {
+            "date": "2026-03-23",
+            "price": 67960.87,
+            "grid_pct": -4.889,
+            "bh_pct": -27.449
+          },
+          {
+            "date": "2026-03-24",
+            "price": 71074.84,
+            "grid_pct": -3.32,
+            "bh_pct": -24.125
+          },
+          {
+            "date": "2026-03-25",
+            "price": 70532.32,
+            "grid_pct": -3.58,
+            "bh_pct": -24.704
+          },
+          {
+            "date": "2026-03-26",
+            "price": 71338.02,
+            "grid_pct": -3.21,
+            "bh_pct": -23.844
+          },
+          {
+            "date": "2026-03-27",
+            "price": 68757.38,
+            "grid_pct": -4.401,
+            "bh_pct": -26.599
+          },
+          {
+            "date": "2026-03-28",
+            "price": 66372.79,
+            "grid_pct": -5.64,
+            "bh_pct": -29.144
+          },
+          {
+            "date": "2026-03-29",
+            "price": 66378.22,
+            "grid_pct": -5.63,
+            "bh_pct": -29.138
+          },
+          {
+            "date": "2026-03-30",
+            "price": 66059.31,
+            "grid_pct": -5.793,
+            "bh_pct": -29.479
+          },
+          {
+            "date": "2026-03-31",
+            "price": 66722.36,
+            "grid_pct": -5.405,
+            "bh_pct": -28.771
+          },
+          {
+            "date": "2026-04-01",
+            "price": 68218.35,
+            "grid_pct": -4.599,
+            "bh_pct": -27.174
+          },
+          {
+            "date": "2026-04-02",
+            "price": 68082.95,
+            "grid_pct": -4.662,
+            "bh_pct": -27.319
+          },
+          {
+            "date": "2026-04-03",
+            "price": 66929.49,
+            "grid_pct": -5.257,
+            "bh_pct": -28.55
+          },
+          {
+            "date": "2026-04-04",
+            "price": 66936.37,
+            "grid_pct": -5.247,
+            "bh_pct": -28.543
+          },
+          {
+            "date": "2026-04-05",
+            "price": 67291.59,
+            "grid_pct": -5.057,
+            "bh_pct": -28.163
+          },
+          {
+            "date": "2026-04-06",
+            "price": 69133.29,
+            "grid_pct": -4.111,
+            "bh_pct": -26.197
+          },
+          {
+            "date": "2026-04-07",
+            "price": 68873.41,
+            "grid_pct": -4.221,
+            "bh_pct": -26.475
+          },
+          {
+            "date": "2026-04-08",
+            "price": 71945.32,
+            "grid_pct": -2.785,
+            "bh_pct": -23.195
+          },
+          {
+            "date": "2026-04-09",
+            "price": 71037.92,
+            "grid_pct": -3.166,
+            "bh_pct": -24.164
+          },
+          {
+            "date": "2026-04-10",
+            "price": 71791.28,
+            "grid_pct": -2.828,
+            "bh_pct": -23.36
+          },
+          {
+            "date": "2026-04-11",
+            "price": 72949.47,
+            "grid_pct": -2.339,
+            "bh_pct": -22.123
+          },
+          {
+            "date": "2026-04-12",
+            "price": 73016.06,
+            "grid_pct": -2.307,
+            "bh_pct": -22.052
+          },
+          {
+            "date": "2026-04-13",
+            "price": 70648.87,
+            "grid_pct": -3.311,
+            "bh_pct": -24.579
+          },
+          {
+            "date": "2026-04-14",
+            "price": 74453.77,
+            "grid_pct": -1.727,
+            "bh_pct": -20.517
+          },
+          {
+            "date": "2026-04-15",
+            "price": 74230.09,
+            "grid_pct": -1.793,
+            "bh_pct": -20.756
+          },
+          {
+            "date": "2026-04-16",
+            "price": 74811.13,
+            "grid_pct": -1.576,
+            "bh_pct": -20.136
+          },
+          {
+            "date": "2026-04-17",
+            "price": 75102.51,
+            "grid_pct": -1.453,
+            "bh_pct": -19.825
+          },
+          {
+            "date": "2026-04-18",
+            "price": 77104.07,
+            "grid_pct": -0.766,
+            "bh_pct": -17.688
+          },
+          {
+            "date": "2026-04-19",
+            "price": 75686.0,
+            "grid_pct": -1.231,
+            "bh_pct": -19.202
+          },
+          {
+            "date": "2026-04-20",
+            "price": 73830.8,
+            "grid_pct": -1.897,
+            "bh_pct": -21.183
+          },
+          {
+            "date": "2026-04-21",
+            "price": 75829.44,
+            "grid_pct": -1.154,
+            "bh_pct": -19.049
+          },
+          {
+            "date": "2026-04-22",
+            "price": 76338.35,
+            "grid_pct": -0.968,
+            "bh_pct": -18.506
+          },
+          {
+            "date": "2026-04-23",
+            "price": 78304.61,
+            "grid_pct": -0.346,
+            "bh_pct": -16.407
+          },
+          {
+            "date": "2026-04-24",
+            "price": 78293.82,
+            "grid_pct": -0.338,
+            "bh_pct": -16.418
+          },
+          {
+            "date": "2026-04-25",
+            "price": 77432.69,
+            "grid_pct": -0.595,
+            "bh_pct": -17.337
+          },
+          {
+            "date": "2026-04-26",
+            "price": 77576.13,
+            "grid_pct": -0.551,
+            "bh_pct": -17.184
+          },
+          {
+            "date": "2026-04-27",
+            "price": 78784.27,
+            "grid_pct": -0.185,
+            "bh_pct": -15.894
+          },
+          {
+            "date": "2026-04-28",
+            "price": 77314.94,
+            "grid_pct": -0.618,
+            "bh_pct": -17.463
+          },
+          {
+            "date": "2026-04-29",
+            "price": 76316.72,
+            "grid_pct": -0.932,
+            "bh_pct": -18.529
+          },
+          {
+            "date": "2026-04-30",
+            "price": 75833.12,
+            "grid_pct": -1.088,
+            "bh_pct": -19.045
+          },
+          {
+            "date": "2026-05-01",
+            "price": 76381.58,
+            "grid_pct": -0.895,
+            "bh_pct": -18.459
+          },
+          {
+            "date": "2026-05-02",
+            "price": 78240.21,
+            "grid_pct": -0.304,
+            "bh_pct": -16.475
+          },
+          {
+            "date": "2026-05-03",
+            "price": 78709.21,
+            "grid_pct": -0.166,
+            "bh_pct": -15.975
+          },
+          {
+            "date": "2026-05-04",
+            "price": 78471.16,
+            "grid_pct": -0.234,
+            "bh_pct": -16.229
+          },
+          {
+            "date": "2026-05-05",
+            "price": 79844.0,
+            "grid_pct": 0.165,
+            "bh_pct": -14.763
+          },
+          {
+            "date": "2026-05-06",
+            "price": 80937.72,
+            "grid_pct": 0.44,
+            "bh_pct": -13.596
+          },
+          {
+            "date": "2026-05-07",
+            "price": 81449.99,
+            "grid_pct": 0.57,
+            "bh_pct": -13.049
+          },
+          {
+            "date": "2026-05-08",
+            "price": 80030.0,
+            "grid_pct": 0.229,
+            "bh_pct": -14.565
+          },
+          {
+            "date": "2026-05-09",
+            "price": 80198.0,
+            "grid_pct": 0.281,
+            "bh_pct": -14.385
+          },
+          {
+            "date": "2026-05-10",
+            "price": 80691.63,
+            "grid_pct": 0.405,
+            "bh_pct": -13.858
+          },
+          {
+            "date": "2026-05-11",
+            "price": 82283.4,
+            "grid_pct": 0.781,
+            "bh_pct": -12.159
+          },
+          {
+            "date": "2026-05-12",
+            "price": 81676.3,
+            "grid_pct": 0.65,
+            "bh_pct": -12.807
+          },
+          {
+            "date": "2026-05-13",
+            "price": 80525.08,
+            "grid_pct": 0.381,
+            "bh_pct": -14.036
+          },
+          {
+            "date": "2026-05-14",
+            "price": 79420.0,
+            "grid_pct": 0.105,
+            "bh_pct": -15.216
+          },
+          {
+            "date": "2026-05-15",
+            "price": 81108.52,
+            "grid_pct": 0.543,
+            "bh_pct": -13.413
+          },
+          {
+            "date": "2026-05-16",
+            "price": 79092.21,
+            "grid_pct": 0.032,
+            "bh_pct": -15.566
+          },
+          {
+            "date": "2026-05-17",
+            "price": 78178.5,
+            "grid_pct": -0.227,
+            "bh_pct": -16.541
+          },
+          {
+            "date": "2026-05-18",
+            "price": 77428.2,
+            "grid_pct": -0.452,
+            "bh_pct": -17.342
+          },
+          {
+            "date": "2026-05-19",
+            "price": 77044.25,
+            "grid_pct": -0.567,
+            "bh_pct": -17.752
+          },
+          {
+            "date": "2026-05-20",
+            "price": 76814.0,
+            "grid_pct": -0.638,
+            "bh_pct": -17.998
+          },
+          {
+            "date": "2026-05-21",
+            "price": 77525.01,
+            "grid_pct": -0.411,
+            "bh_pct": -17.239
+          },
+          {
+            "date": "2026-05-22",
+            "price": 77600.27,
+            "grid_pct": -0.378,
+            "bh_pct": -17.158
+          },
+          {
+            "date": "2026-05-23",
+            "price": 75508.82,
+            "grid_pct": -1.06,
+            "bh_pct": -19.391
+          },
+          {
+            "date": "2026-05-24",
+            "price": 76794.88,
+            "grid_pct": -0.614,
+            "bh_pct": -18.018
+          },
+          {
+            "date": "2026-05-25",
+            "price": 77107.06,
+            "grid_pct": -0.505,
+            "bh_pct": -17.685
+          },
+          {
+            "date": "2026-05-26",
+            "price": 77331.46,
+            "grid_pct": -0.437,
+            "bh_pct": -17.445
+          },
+          {
+            "date": "2026-05-27",
+            "price": 75934.63,
+            "grid_pct": -0.882,
+            "bh_pct": -18.937
+          },
+          {
+            "date": "2026-05-28",
+            "price": 74517.78,
+            "grid_pct": -1.382,
+            "bh_pct": -20.449
+          },
+          {
+            "date": "2026-05-29",
+            "price": 73702.29,
+            "grid_pct": -1.685,
+            "bh_pct": -21.32
+          },
+          {
+            "date": "2026-05-30",
+            "price": 73481.05,
+            "grid_pct": -1.762,
+            "bh_pct": -21.556
+          },
+          {
+            "date": "2026-05-31",
+            "price": 73923.85,
+            "grid_pct": -1.587,
+            "bh_pct": -21.083
+          },
+          {
+            "date": "2026-06-01",
+            "price": 73684.43,
+            "grid_pct": -1.678,
+            "bh_pct": -21.339
+          },
+          {
+            "date": "2026-06-02",
+            "price": 71350.0,
+            "grid_pct": -2.625,
+            "bh_pct": -23.831
+          },
+          {
+            "date": "2026-06-03",
+            "price": 66843.99,
+            "grid_pct": -4.786,
+            "bh_pct": -28.641
+          },
+          {
+            "date": "2026-06-04",
+            "price": 64357.44,
+            "grid_pct": -6.177,
+            "bh_pct": -31.296
+          },
+          {
+            "date": "2026-06-05",
+            "price": 63766.09,
+            "grid_pct": -6.496,
+            "bh_pct": -31.927
+          },
+          {
+            "date": "2026-06-06",
+            "price": 61196.94,
+            "grid_pct": -8.103,
+            "bh_pct": -34.67
+          },
+          {
+            "date": "2026-06-07",
+            "price": 60884.37,
+            "grid_pct": -8.3,
+            "bh_pct": -35.003
+          },
+          {
+            "date": "2026-06-08",
+            "price": 63263.08,
+            "grid_pct": -6.797,
+            "bh_pct": -32.464
+          },
+          {
+            "date": "2026-06-09",
+            "price": 63079.99,
+            "grid_pct": -6.904,
+            "bh_pct": -32.659
+          },
+          {
+            "date": "2026-06-10",
+            "price": 61729.99,
+            "grid_pct": -7.753,
+            "bh_pct": -34.101
+          },
+          {
+            "date": "2026-06-11",
+            "price": 61574.52,
+            "grid_pct": -7.851,
+            "bh_pct": -34.267
+          },
+          {
+            "date": "2026-06-12",
+            "price": 63614.0,
+            "grid_pct": -6.568,
+            "bh_pct": -32.089
+          },
+          {
+            "date": "2026-06-13",
+            "price": 63576.01,
+            "grid_pct": -6.588,
+            "bh_pct": -32.13
+          },
+          {
+            "date": "2026-06-14",
+            "price": 64422.01,
+            "grid_pct": -6.07,
+            "bh_pct": -31.227
+          },
+          {
+            "date": "2026-06-15",
+            "price": 65749.99,
+            "grid_pct": -5.286,
+            "bh_pct": -29.809
+          }
+        ],
+        "pair": "BTC_USDT",
+        "currency": "USDT",
+        "source": "Binance"
+      }
+    ]
+  },
+  {
+    "fee": 0.00125,
+    "stake": 94786,
+    "currency": "USDT",
+    "source": "Binance",
+    "backtest_start": "2026-01-19",
+    "backtest_end": "2026-06-15",
+    "total_trades": 382,
+    "total_profit": 3256.98,
+    "profit_pct": 3.44,
+    "total_fee": 1160.69,
+    "revenue_per_month": 669.88,
+    "pairs": [
+      {
+        "stake_total": 94786,
+        "fee": 0.00125,
+        "ref_price": 93673.14,
+        "last_price": 66328.74,
+        "grid_min": 63190,
+        "grid_max": 126381,
+        "grid_step": 780.14,
+        "grid_levels": 82,
+        "spacing_pct": 1.2346,
+        "profit_per_grid": 0.309,
+        "actual_min": 59130.91,
+        "actual_max": 93673.14,
+        "total_trades": 382,
+        "trades_per_year": 943,
+        "trades_per_month": 78.6,
+        "wins": 382,
+        "win_pct": 100.0,
+        "total_profit": 3256.98,
+        "profit_pct": 3.44,
+        "apy": 8.48,
+        "total_fee": 1160.69,
+        "volume_per_month": 190856.99,
+        "revenue_per_month": 669.88,
+        "total_volume": 927951.2,
+        "final_wallet": 56429.62,
+        "coin_slots_held": 36,
+        "cost_of_held": 41613.37,
+        "unrealized_val": 34818.28,
+        "unrealized_pnl": -6795.09,
+        "net_pnl": -3538.1,
+        "net_pnl_pct": -3.73,
+        "final_equity": 91247.9,
+        "monthly_revenue": {
+          "2026-01": 248.62,
+          "2026-02": 1225.97,
+          "2026-03": 840.99,
+          "2026-04": 470.49,
+          "2026-05": 275.83,
+          "2026-06": 195.09
+        },
+        "snapshots": [
+          {
+            "date": "2026-01-19",
+            "price": 93365.03,
+            "grid_pct": -0.005,
+            "bh_pct": -0.329
+          },
+          {
+            "date": "2026-01-20",
+            "price": 92600.01,
+            "grid_pct": -0.015,
+            "bh_pct": -1.146
+          },
+          {
+            "date": "2026-01-21",
+            "price": 88533.01,
+            "grid_pct": -0.259,
+            "bh_pct": -5.487
+          },
+          {
+            "date": "2026-01-22",
+            "price": 89516.66,
+            "grid_pct": -0.131,
+            "bh_pct": -4.437
+          },
+          {
+            "date": "2026-01-23",
+            "price": 89539.18,
+            "grid_pct": -0.123,
+            "bh_pct": -4.413
+          },
+          {
+            "date": "2026-01-24",
+            "price": 89600.26,
+            "grid_pct": -0.099,
+            "bh_pct": -4.348
+          },
+          {
+            "date": "2026-01-25",
+            "price": 89238.48,
+            "grid_pct": -0.128,
+            "bh_pct": -4.734
+          },
+          {
+            "date": "2026-01-26",
+            "price": 86650.86,
+            "grid_pct": -0.398,
+            "bh_pct": -7.497
+          },
+          {
+            "date": "2026-01-27",
+            "price": 88294.94,
+            "grid_pct": -0.188,
+            "bh_pct": -5.741
+          },
+          {
+            "date": "2026-01-28",
+            "price": 89249.76,
+            "grid_pct": -0.079,
+            "bh_pct": -4.722
+          },
+          {
+            "date": "2026-01-29",
+            "price": 89324.24,
+            "grid_pct": -0.053,
+            "bh_pct": -4.643
+          },
+          {
+            "date": "2026-01-30",
+            "price": 84701.76,
+            "grid_pct": -0.616,
+            "bh_pct": -9.577
+          },
+          {
+            "date": "2026-01-31",
+            "price": 84229.99,
+            "grid_pct": -0.642,
+            "bh_pct": -10.081
+          },
+          {
+            "date": "2026-02-01",
+            "price": 78683.61,
+            "grid_pct": -1.844,
+            "bh_pct": -16.002
+          },
+          {
+            "date": "2026-02-02",
+            "price": 76956.72,
+            "grid_pct": -2.326,
+            "bh_pct": -17.845
+          },
+          {
+            "date": "2026-02-03",
+            "price": 78710.04,
+            "grid_pct": -1.715,
+            "bh_pct": -15.974
+          },
+          {
+            "date": "2026-02-04",
+            "price": 75693.03,
+            "grid_pct": -2.584,
+            "bh_pct": -19.195
+          },
+          {
+            "date": "2026-02-05",
+            "price": 73165.0,
+            "grid_pct": -3.444,
+            "bh_pct": -21.893
+          },
+          {
+            "date": "2026-02-06",
+            "price": 63047.62,
+            "grid_pct": -8.414,
+            "bh_pct": -32.694
+          },
+          {
+            "date": "2026-02-07",
+            "price": 70340.41,
+            "grid_pct": -4.301,
+            "bh_pct": -24.909
+          },
+          {
+            "date": "2026-02-08",
+            "price": 69224.88,
+            "grid_pct": -4.757,
+            "bh_pct": -26.1
+          },
+          {
+            "date": "2026-02-09",
+            "price": 70366.01,
+            "grid_pct": -4.194,
+            "bh_pct": -24.881
+          },
+          {
+            "date": "2026-02-10",
+            "price": 70189.28,
+            "grid_pct": -4.23,
+            "bh_pct": -25.07
+          },
+          {
+            "date": "2026-02-11",
+            "price": 68813.64,
+            "grid_pct": -4.851,
+            "bh_pct": -26.539
+          },
+          {
+            "date": "2026-02-12",
+            "price": 67070.59,
+            "grid_pct": -5.691,
+            "bh_pct": -28.399
+          },
+          {
+            "date": "2026-02-13",
+            "price": 66187.44,
+            "grid_pct": -6.129,
+            "bh_pct": -29.342
+          },
+          {
+            "date": "2026-02-14",
+            "price": 68845.34,
+            "grid_pct": -4.707,
+            "bh_pct": -26.505
+          },
+          {
+            "date": "2026-02-15",
+            "price": 69830.68,
+            "grid_pct": -4.21,
+            "bh_pct": -25.453
+          },
+          {
+            "date": "2026-02-16",
+            "price": 68751.76,
+            "grid_pct": -4.716,
+            "bh_pct": -26.605
+          },
+          {
+            "date": "2026-02-17",
+            "price": 68870.46,
+            "grid_pct": -4.638,
+            "bh_pct": -26.478
+          },
+          {
+            "date": "2026-02-18",
+            "price": 67535.99,
+            "grid_pct": -5.292,
+            "bh_pct": -27.903
+          },
+          {
+            "date": "2026-02-19",
+            "price": 66435.19,
+            "grid_pct": -5.856,
+            "bh_pct": -29.078
+          },
+          {
+            "date": "2026-02-20",
+            "price": 66971.94,
+            "grid_pct": -5.549,
+            "bh_pct": -28.505
+          },
+          {
+            "date": "2026-02-21",
+            "price": 68022.8,
+            "grid_pct": -4.951,
+            "bh_pct": -27.383
+          },
+          {
+            "date": "2026-02-22",
+            "price": 67980.08,
+            "grid_pct": -4.963,
+            "bh_pct": -27.428
+          },
+          {
+            "date": "2026-02-23",
+            "price": 67660.0,
+            "grid_pct": -5.129,
+            "bh_pct": -27.77
+          },
+          {
+            "date": "2026-02-24",
+            "price": 64769.66,
+            "grid_pct": -6.686,
+            "bh_pct": -30.856
+          },
+          {
+            "date": "2026-02-25",
+            "price": 64077.49,
+            "grid_pct": -7.085,
+            "bh_pct": -31.595
+          },
+          {
+            "date": "2026-02-26",
+            "price": 67906.49,
+            "grid_pct": -4.88,
+            "bh_pct": -27.507
+          },
+          {
+            "date": "2026-02-27",
+            "price": 67447.41,
+            "grid_pct": -5.079,
+            "bh_pct": -27.997
+          },
+          {
+            "date": "2026-02-28",
+            "price": 65846.06,
+            "grid_pct": -5.929,
+            "bh_pct": -29.707
+          },
+          {
+            "date": "2026-03-01",
+            "price": 66998.58,
+            "grid_pct": -5.253,
+            "bh_pct": -28.476
+          },
+          {
+            "date": "2026-03-02",
+            "price": 65769.83,
+            "grid_pct": -5.88,
+            "bh_pct": -29.788
+          },
+          {
+            "date": "2026-03-03",
+            "price": 68829.26,
+            "grid_pct": -4.209,
+            "bh_pct": -26.522
+          },
+          {
+            "date": "2026-03-04",
+            "price": 68246.23,
+            "grid_pct": -4.44,
+            "bh_pct": -27.144
+          },
+          {
+            "date": "2026-03-05",
+            "price": 72721.9,
+            "grid_pct": -2.312,
+            "bh_pct": -22.366
+          },
+          {
+            "date": "2026-03-06",
+            "price": 70869.76,
+            "grid_pct": -3.08,
+            "bh_pct": -24.344
+          },
+          {
+            "date": "2026-03-07",
+            "price": 68151.49,
+            "grid_pct": -4.356,
+            "bh_pct": -27.245
+          },
+          {
+            "date": "2026-03-08",
+            "price": 67308.6,
+            "grid_pct": -4.79,
+            "bh_pct": -28.145
+          },
+          {
+            "date": "2026-03-09",
+            "price": 66010.13,
+            "grid_pct": -5.483,
+            "bh_pct": -29.531
+          },
+          {
+            "date": "2026-03-10",
+            "price": 68436.14,
+            "grid_pct": -4.148,
+            "bh_pct": -26.942
+          },
+          {
+            "date": "2026-03-11",
+            "price": 69842.02,
+            "grid_pct": -3.405,
+            "bh_pct": -25.441
+          },
+          {
+            "date": "2026-03-12",
+            "price": 70221.99,
+            "grid_pct": -3.201,
+            "bh_pct": -25.035
+          },
+          {
+            "date": "2026-03-13",
+            "price": 70450.1,
+            "grid_pct": -3.076,
+            "bh_pct": -24.792
+          },
+          {
+            "date": "2026-03-14",
+            "price": 70850.25,
+            "grid_pct": -2.854,
+            "bh_pct": -24.364
+          },
+          {
+            "date": "2026-03-15",
+            "price": 71191.64,
+            "grid_pct": -2.702,
+            "bh_pct": -24.0
+          },
+          {
+            "date": "2026-03-16",
+            "price": 72952.44,
+            "grid_pct": -1.946,
+            "bh_pct": -22.12
+          },
+          {
+            "date": "2026-03-17",
+            "price": 74659.99,
+            "grid_pct": -1.259,
+            "bh_pct": -20.297
+          },
+          {
+            "date": "2026-03-18",
+            "price": 73932.42,
+            "grid_pct": -1.511,
+            "bh_pct": -21.074
+          },
+          {
+            "date": "2026-03-19",
+            "price": 71210.0,
+            "grid_pct": -2.606,
+            "bh_pct": -23.98
+          },
+          {
+            "date": "2026-03-20",
+            "price": 69915.22,
+            "grid_pct": -3.183,
+            "bh_pct": -25.363
+          },
+          {
+            "date": "2026-03-21",
+            "price": 70539.37,
+            "grid_pct": -2.874,
+            "bh_pct": -24.696
+          },
+          {
+            "date": "2026-03-22",
+            "price": 68784.27,
+            "grid_pct": -3.693,
+            "bh_pct": -26.57
+          },
+          {
+            "date": "2026-03-23",
+            "price": 67960.87,
+            "grid_pct": -4.095,
+            "bh_pct": -27.449
+          },
+          {
+            "date": "2026-03-24",
+            "price": 71074.84,
+            "grid_pct": -2.504,
+            "bh_pct": -24.125
+          },
+          {
+            "date": "2026-03-25",
+            "price": 70532.32,
+            "grid_pct": -2.755,
+            "bh_pct": -24.704
+          },
+          {
+            "date": "2026-03-26",
+            "price": 71338.02,
+            "grid_pct": -2.381,
+            "bh_pct": -23.844
+          },
+          {
+            "date": "2026-03-27",
+            "price": 68757.38,
+            "grid_pct": -3.565,
+            "bh_pct": -26.599
+          },
+          {
+            "date": "2026-03-28",
+            "price": 66372.79,
+            "grid_pct": -4.801,
+            "bh_pct": -29.144
+          },
+          {
+            "date": "2026-03-29",
+            "price": 66378.22,
+            "grid_pct": -4.788,
+            "bh_pct": -29.138
+          },
+          {
+            "date": "2026-03-30",
+            "price": 66059.31,
+            "grid_pct": -4.945,
+            "bh_pct": -29.479
+          },
+          {
+            "date": "2026-03-31",
+            "price": 66722.36,
+            "grid_pct": -4.548,
+            "bh_pct": -28.771
+          },
+          {
+            "date": "2026-04-01",
+            "price": 68218.35,
+            "grid_pct": -3.731,
+            "bh_pct": -27.174
+          },
+          {
+            "date": "2026-04-02",
+            "price": 68082.95,
+            "grid_pct": -3.793,
+            "bh_pct": -27.319
+          },
+          {
+            "date": "2026-04-03",
+            "price": 66929.49,
+            "grid_pct": -4.383,
+            "bh_pct": -28.55
+          },
+          {
+            "date": "2026-04-04",
+            "price": 66936.37,
+            "grid_pct": -4.369,
+            "bh_pct": -28.543
+          },
+          {
+            "date": "2026-04-05",
+            "price": 67291.59,
+            "grid_pct": -4.179,
+            "bh_pct": -28.163
+          },
+          {
+            "date": "2026-04-06",
+            "price": 69133.29,
+            "grid_pct": -3.229,
+            "bh_pct": -26.197
+          },
+          {
+            "date": "2026-04-07",
+            "price": 68873.41,
+            "grid_pct": -3.33,
+            "bh_pct": -26.475
+          },
+          {
+            "date": "2026-04-08",
+            "price": 71945.32,
+            "grid_pct": -1.881,
+            "bh_pct": -23.195
+          },
+          {
+            "date": "2026-04-09",
+            "price": 71037.92,
+            "grid_pct": -2.254,
+            "bh_pct": -24.164
+          },
+          {
+            "date": "2026-04-10",
+            "price": 71791.28,
+            "grid_pct": -1.911,
+            "bh_pct": -23.36
+          },
+          {
+            "date": "2026-04-11",
+            "price": 72949.47,
+            "grid_pct": -1.418,
+            "bh_pct": -22.123
+          },
+          {
+            "date": "2026-04-12",
+            "price": 73016.06,
+            "grid_pct": -1.382,
+            "bh_pct": -22.052
+          },
+          {
+            "date": "2026-04-13",
+            "price": 70648.87,
+            "grid_pct": -2.383,
+            "bh_pct": -24.579
+          },
+          {
+            "date": "2026-04-14",
+            "price": 74453.77,
+            "grid_pct": -0.789,
+            "bh_pct": -20.517
+          },
+          {
+            "date": "2026-04-15",
+            "price": 74230.09,
+            "grid_pct": -0.845,
+            "bh_pct": -20.756
+          },
+          {
+            "date": "2026-04-16",
+            "price": 74811.13,
+            "grid_pct": -0.626,
+            "bh_pct": -20.136
+          },
+          {
+            "date": "2026-04-17",
+            "price": 75102.51,
+            "grid_pct": -0.494,
+            "bh_pct": -19.825
+          },
+          {
+            "date": "2026-04-18",
+            "price": 77104.07,
+            "grid_pct": 0.202,
+            "bh_pct": -17.688
+          },
+          {
+            "date": "2026-04-19",
+            "price": 75686.0,
+            "grid_pct": -0.26,
+            "bh_pct": -19.202
+          },
+          {
+            "date": "2026-04-20",
+            "price": 73830.8,
+            "grid_pct": -0.921,
+            "bh_pct": -21.183
+          },
+          {
+            "date": "2026-04-21",
+            "price": 75829.44,
+            "grid_pct": -0.169,
+            "bh_pct": -19.049
+          },
+          {
+            "date": "2026-04-22",
+            "price": 76338.35,
+            "grid_pct": 0.024,
+            "bh_pct": -18.506
+          },
+          {
+            "date": "2026-04-23",
+            "price": 78304.61,
+            "grid_pct": 0.653,
+            "bh_pct": -16.407
+          },
+          {
+            "date": "2026-04-24",
+            "price": 78293.82,
+            "grid_pct": 0.669,
+            "bh_pct": -16.418
+          },
+          {
+            "date": "2026-04-25",
+            "price": 77432.69,
+            "grid_pct": 0.411,
+            "bh_pct": -17.337
+          },
+          {
+            "date": "2026-04-26",
+            "price": 77576.13,
+            "grid_pct": 0.457,
+            "bh_pct": -17.184
+          },
+          {
+            "date": "2026-04-27",
+            "price": 78784.27,
+            "grid_pct": 0.829,
+            "bh_pct": -15.894
+          },
+          {
+            "date": "2026-04-28",
+            "price": 77314.94,
+            "grid_pct": 0.399,
+            "bh_pct": -17.463
+          },
+          {
+            "date": "2026-04-29",
+            "price": 76316.72,
+            "grid_pct": 0.089,
+            "bh_pct": -18.529
+          },
+          {
+            "date": "2026-04-30",
+            "price": 75833.12,
+            "grid_pct": -0.062,
+            "bh_pct": -19.045
+          },
+          {
+            "date": "2026-05-01",
+            "price": 76381.58,
+            "grid_pct": 0.135,
+            "bh_pct": -18.459
+          },
+          {
+            "date": "2026-05-02",
+            "price": 78240.21,
+            "grid_pct": 0.733,
+            "bh_pct": -16.475
+          },
+          {
+            "date": "2026-05-03",
+            "price": 78709.21,
+            "grid_pct": 0.873,
+            "bh_pct": -15.975
+          },
+          {
+            "date": "2026-05-04",
+            "price": 78471.16,
+            "grid_pct": 0.805,
+            "bh_pct": -16.229
+          },
+          {
+            "date": "2026-05-05",
+            "price": 79844.0,
+            "grid_pct": 1.216,
+            "bh_pct": -14.763
+          },
+          {
+            "date": "2026-05-06",
+            "price": 80937.72,
+            "grid_pct": 1.493,
+            "bh_pct": -13.596
+          },
+          {
+            "date": "2026-05-07",
+            "price": 81449.99,
+            "grid_pct": 1.63,
+            "bh_pct": -13.049
+          },
+          {
+            "date": "2026-05-08",
+            "price": 80030.0,
+            "grid_pct": 1.293,
+            "bh_pct": -14.565
+          },
+          {
+            "date": "2026-05-09",
+            "price": 80198.0,
+            "grid_pct": 1.351,
+            "bh_pct": -14.385
+          },
+          {
+            "date": "2026-05-10",
+            "price": 80691.63,
+            "grid_pct": 1.476,
+            "bh_pct": -13.858
+          },
+          {
+            "date": "2026-05-11",
+            "price": 82283.4,
+            "grid_pct": 1.858,
+            "bh_pct": -12.159
+          },
+          {
+            "date": "2026-05-12",
+            "price": 81676.3,
+            "grid_pct": 1.73,
+            "bh_pct": -12.807
+          },
+          {
+            "date": "2026-05-13",
+            "price": 80525.08,
+            "grid_pct": 1.463,
+            "bh_pct": -14.036
+          },
+          {
+            "date": "2026-05-14",
+            "price": 79420.0,
+            "grid_pct": 1.195,
+            "bh_pct": -15.216
+          },
+          {
+            "date": "2026-05-15",
+            "price": 81108.52,
+            "grid_pct": 1.639,
+            "bh_pct": -13.413
+          },
+          {
+            "date": "2026-05-16",
+            "price": 79092.21,
+            "grid_pct": 1.133,
+            "bh_pct": -15.566
+          },
+          {
+            "date": "2026-05-17",
+            "price": 78178.5,
+            "grid_pct": 0.874,
+            "bh_pct": -16.541
+          },
+          {
+            "date": "2026-05-18",
+            "price": 77428.2,
+            "grid_pct": 0.651,
+            "bh_pct": -17.342
+          },
+          {
+            "date": "2026-05-19",
+            "price": 77044.25,
+            "grid_pct": 0.538,
+            "bh_pct": -17.752
+          },
+          {
+            "date": "2026-05-20",
+            "price": 76814.0,
+            "grid_pct": 0.47,
+            "bh_pct": -17.998
+          },
+          {
+            "date": "2026-05-21",
+            "price": 77525.01,
+            "grid_pct": 0.698,
+            "bh_pct": -17.239
+          },
+          {
+            "date": "2026-05-22",
+            "price": 77600.27,
+            "grid_pct": 0.737,
+            "bh_pct": -17.158
+          },
+          {
+            "date": "2026-05-23",
+            "price": 75508.82,
+            "grid_pct": 0.058,
+            "bh_pct": -19.391
+          },
+          {
+            "date": "2026-05-24",
+            "price": 76794.88,
+            "grid_pct": 0.512,
+            "bh_pct": -18.018
+          },
+          {
+            "date": "2026-05-25",
+            "price": 77107.06,
+            "grid_pct": 0.624,
+            "bh_pct": -17.685
+          },
+          {
+            "date": "2026-05-26",
+            "price": 77331.46,
+            "grid_pct": 0.694,
+            "bh_pct": -17.445
+          },
+          {
+            "date": "2026-05-27",
+            "price": 75934.63,
+            "grid_pct": 0.252,
+            "bh_pct": -18.937
+          },
+          {
+            "date": "2026-05-28",
+            "price": 74517.78,
+            "grid_pct": -0.245,
+            "bh_pct": -20.449
+          },
+          {
+            "date": "2026-05-29",
+            "price": 73702.29,
+            "grid_pct": -0.546,
+            "bh_pct": -21.32
+          },
+          {
+            "date": "2026-05-30",
+            "price": 73481.05,
+            "grid_pct": -0.616,
+            "bh_pct": -21.556
+          },
+          {
+            "date": "2026-05-31",
+            "price": 73923.85,
+            "grid_pct": -0.44,
+            "bh_pct": -21.083
+          },
+          {
+            "date": "2026-06-01",
+            "price": 73684.43,
+            "grid_pct": -0.53,
+            "bh_pct": -21.339
+          },
+          {
+            "date": "2026-06-02",
+            "price": 71350.0,
+            "grid_pct": -1.469,
+            "bh_pct": -23.831
+          },
+          {
+            "date": "2026-06-03",
+            "price": 66843.99,
+            "grid_pct": -3.615,
+            "bh_pct": -28.641
+          },
+          {
+            "date": "2026-06-04",
+            "price": 64357.44,
+            "grid_pct": -4.995,
+            "bh_pct": -31.296
+          },
+          {
+            "date": "2026-06-05",
+            "price": 63766.09,
+            "grid_pct": -5.299,
+            "bh_pct": -31.927
+          },
+          {
+            "date": "2026-06-06",
+            "price": 61196.94,
+            "grid_pct": -6.906,
+            "bh_pct": -34.67
+          },
+          {
+            "date": "2026-06-07",
+            "price": 60884.37,
+            "grid_pct": -7.103,
+            "bh_pct": -35.003
+          },
+          {
+            "date": "2026-06-08",
+            "price": 63263.08,
+            "grid_pct": -5.594,
+            "bh_pct": -32.464
+          },
+          {
+            "date": "2026-06-09",
+            "price": 63079.99,
+            "grid_pct": -5.699,
+            "bh_pct": -32.659
+          },
+          {
+            "date": "2026-06-10",
+            "price": 61729.99,
+            "grid_pct": -6.549,
+            "bh_pct": -34.101
+          },
+          {
+            "date": "2026-06-11",
+            "price": 61574.52,
+            "grid_pct": -6.647,
+            "bh_pct": -34.267
+          },
+          {
+            "date": "2026-06-12",
+            "price": 63614.0,
+            "grid_pct": -5.363,
+            "bh_pct": -32.089
+          },
+          {
+            "date": "2026-06-13",
+            "price": 63576.01,
+            "grid_pct": -5.381,
+            "bh_pct": -32.13
+          },
+          {
+            "date": "2026-06-14",
+            "price": 64422.01,
+            "grid_pct": -4.861,
+            "bh_pct": -31.227
+          },
+          {
+            "date": "2026-06-15",
+            "price": 65749.99,
+            "grid_pct": -4.072,
+            "bh_pct": -29.809
+          }
+        ],
+        "pair": "BTC_USDT",
+        "currency": "USDT",
+        "source": "Binance"
+      }
+    ]
+  }
+];
+
+const COLORS = ['#38bdf8','#34d399','#fbbf24','#a78bfa','#f87171','#fb923c','#e879f9'];
+const PAIRS  = ['DOGE_USDT','SOL_USDT','XRP_USDT','ETH_USDT','BNB_USDT','BTC_USDT','XAUT_USDT'];
+
+let monthlyChart, apyChart, feeChart, cumChart;
+
+function fmt(n, dec=0) {
+  return Number(n).toLocaleString('en-US', {minimumFractionDigits: dec, maximumFractionDigits: dec});
+}
+function fmtP(n) {
+  return (n >= 0 ? '+' : '') + Number(n).toFixed(2) + '%';
+}
+
+function getActivePair() {
+  return document.getElementById('pairSelect').value; // 'USDT', 'THB', 'BOTH'
+}
+
+function getData() {
+  const fee   = parseFloat(document.getElementById('feeSelect').value);
+  const pair  = getActivePair();
+  if (pair === 'USDT') {
+    return RAW.find(d => d.fee === fee && d.stake === 94786);
+  } else if (pair === 'THB') {
+    return RAW.find(d => d.fee === fee && d.stake === 3000000 && d.currency === 'THB');
+  } else {
+    // BOTH: ส่งค่าจาก USDT ไปเป็น default (cumulative chart จะ override)
+    return RAW.find(d => d.fee === fee && d.stake === 94786);
+  }
+}
+
+function getDataBoth(fee) {
+  const feeVal = fee !== undefined ? fee : parseFloat(document.getElementById('feeSelect').value);
+  return {
+    usdt: RAW.find(d => d.fee === feeVal && d.stake === 94786),
+    thb:  RAW.find(d => d.fee === feeVal && d.stake === 3000000 && d.currency === 'THB'),
+  };
+}
+
+function renderStats(d) {
+  const totalProfit = d.total_profit;
+  const revMo = d.revenue_per_month;
+  const trades = d.total_trades;
+  const fees = d.total_fee;
+  const cur = d.currency || 'USDT';
+  // Vol/AUC/mo = (Total Vol / Stake) / months
+  const months = Object.keys(d.pairs[0]?.monthly_revenue || {}).length || 6;
+  const totalVol = d.pairs.reduce((a,p)=>a+p.total_volume,0);
+  const volAucMo = (totalVol / d.stake) / months;
+  // Period Return = กำไรจริงในช่วง backtest (ไม่ annualize)
+  const periodReturn = d.total_profit / d.stake * 100;
+  // จำนวนวัน backtest
+  const days = Math.round((new Date(d.backtest_end) - new Date(d.backtest_start)) / 86400000);
+  document.getElementById('statsRow').innerHTML = `
+    <div class="stat-card">
+      <div class="label">Grid Profit (${days}d)</div>
+      <div class="value green">+${fmt(totalProfit, 0)}</div>
+      <div class="sub">${cur} · +${periodReturn.toFixed(2)}%</div>
+    </div>
+    <div class="stat-card">
+      <div class="label">Revenue / Month</div>
+      <div class="value accent">+${fmt(revMo, 0)}</div>
+      <div class="sub">${cur} เฉลี่ย</div>
+    </div>
+    <div class="stat-card">
+      <div class="label">Return (${days}d)</div>
+      <div class="value amber">${fmtP(periodReturn)}</div>
+      <div class="sub">ตามจริงช่วง backtest</div>
+    </div>
+    <div class="stat-card">
+      <div class="label">Total Trades</div>
+      <div class="value purple">${fmt(trades * 2)}</div>
+      <div class="sub">buy + sell (${fmt(trades)} round trips)</div>
+    </div>
+    <div class="stat-card">
+      <div class="label">Vol / AUC / mo</div>
+      <div class="value accent">${volAucMo.toFixed(2)}x</div>
+      <div class="sub">turnover/เดือน</div>
+    </div>
+    <div class="stat-card">
+      <div class="label">Total Fee paid</div>
+      <div class="value" style="color:var(--red)">-${fmt(fees, 0)}</div>
+      <div class="sub">${cur}</div>
+    </div>
+    <div class="stat-card">
+      <div class="label">Total Volume</div>
+      <div class="value" style="color:var(--muted); font-size:18px">${fmt(totalVol)}</div>
+      <div class="sub">${cur} traded</div>
+    </div>
+  `;
+}
+
+function makeStakeTable(stakeData) {
+  const pairs = [...stakeData.pairs].sort((a,b) => b.revenue_per_month - a.revenue_per_month);
+  const maxVol = Math.max(...pairs.map(p => p.total_volume * 2));
+  const cur = stakeData.currency || 'USDT';
+  const stakeLabel = fmt(stakeData.stake) + ' ' + cur;
+  const totalProfit = stakeData.total_profit;
+  const revMo = stakeData.revenue_per_month;
+
+  // months = จำนวน keys ใน monthly_revenue (สอดคล้องกับวิธีคำนวณ total_volume ใน script)
+  const months = Object.keys(stakeData.pairs[0]?.monthly_revenue || {}).length || 6;
+
+  const rows = pairs.map((p, i) => {
+    const rankClass = i === 0 ? 'r1' : i === 1 ? 'r2' : i === 2 ? 'r3' : '';
+    const volTotal = p.total_volume * 2;           // buy + sell (for bar display)
+    const barW = Math.round(volTotal / maxVol * 80);
+    // Vol/AUC/mo = (Total Vol / Stake) / months  → แสดงเป็น xM
+    const volAucMo = (p.total_volume / p.stake_total) / months;
+    // ✅ ข้อ 3: Trades = round trips (sell count) × 2 = buy+sell
+    // Txn ทั้งช่วง = round trips × 2 (buy+sell) ตรงกับ TOTAL TRADES
+    const txnPerYr = p.total_trades * 2;
+    // Fee = total_fee จาก data โดยตรง (executed จริง)
+    const feeVal = p.total_fee;
+    // Return % = กำไรจริงในช่วง backtest (ไม่ annualize)
+    const periodReturn = p.total_profit / p.stake_total * 100;
+    const retColor = periodReturn >= 3 ? 'var(--green)' : periodReturn >= 1 ? 'var(--amber)' : 'var(--red)';
+
+    return `<tr>
+      <td><span class="rank ${rankClass}">${i+1}</span>${p.pair}</td>
+      <td style="color:${retColor}; font-weight:600; font-family:'IBM Plex Mono',monospace">${periodReturn >= 0 ? '+' : ''}${periodReturn.toFixed(2)}%</td>
+      <td style="font-family:'IBM Plex Mono',monospace">${fmt(txnPerYr)}</td>
+      <td>${p.win_pct.toFixed(1)}%</td>
+      <td>${p.spacing_pct.toFixed(4)}%</td>
+      <td style="color:var(--muted)">${fmt(p.grid_min, 0)}</td>
+      <td style="color:var(--muted)">${fmt(p.grid_max, 0)}</td>
+      <td style="color:${p.actual_min < p.grid_min ? 'var(--red)' : 'var(--green)'}">${fmt(p.actual_min, 0)}</td>
+      <td style="color:${p.actual_max > p.grid_max ? 'var(--red)' : 'var(--green)'}">${fmt(p.actual_max, 0)}</td>
+      <td style="color:var(--green); font-weight:500">+${fmt(p.revenue_per_month, 0)}</td>
+      <td style="color:var(--green)">+${fmt(p.total_profit, 0)}</td>
+      <td style="color:${p.unrealized_pnl >= 0 ? 'var(--green)' : 'var(--red)'}">
+        ${p.unrealized_pnl >= 0 ? '+' : ''}${fmt(p.unrealized_pnl, 0)}<br>
+        <span style="font-size:10px; color:var(--muted)">${fmt(p.unrealized_val, 0)} val</span>
+      </td>
+      <td style="color:${p.net_pnl >= 0 ? 'var(--green)' : 'var(--red)'}; font-weight:600">
+        ${p.net_pnl >= 0 ? '+' : ''}${fmt(p.net_pnl, 0)}<br>
+        <span style="font-size:10px; color:var(--muted)">${p.net_pnl_pct >= 0 ? '+' : ''}${p.net_pnl_pct.toFixed(2)}%</span>
+      </td>
+      <td style="color:${p.final_equity >= p.stake_total ? 'var(--green)' : 'var(--red)'}">
+        ${fmt(p.final_equity, 0)}
+      </td>
+      <td>
+        <div class="bar-wrap">
+          <div class="bar" style="width:${barW}px"></div>
+          <span style="font-family:'IBM Plex Mono',monospace; font-size:11px">${fmt(volTotal, 0)}</span>
+        </div>
+      </td>
+      <td style="color:var(--accent); font-weight:500; font-family:'IBM Plex Mono',monospace">${volAucMo.toFixed(2)}x/mo</td>
+      <td style="color:var(--red); font-family:'IBM Plex Mono',monospace">-${fmt(feeVal, 0)}</td>
+    </tr>`;
+  }).join('');
+
+  return `
+    <div style="border-bottom: 1px solid var(--border);">
+      <div style="display:flex; align-items:center; justify-content:space-between; padding:.6rem 1.25rem; background:var(--bg3);">
+        <span style="font-family:'IBM Plex Mono',monospace; font-size:13px; font-weight:600; color:var(--accent);">Stake ${stakeLabel}</span>
+        <span style="font-size:12px; color:var(--muted);">
+          Profit <span style="color:var(--green)">+${fmt(totalProfit,0)}</span> &nbsp;·&nbsp;
+          Rev/mo <span style="color:var(--green)">+${fmt(revMo,0)}</span> ${cur}
+        </span>
+      </div>
+      <table>
+        <thead>
+          <tr>
+            <th>Pair</th>
+            <th title="กำไรจริงในช่วง backtest (ไม่ annualize)">Return %</th>
+            <th title="round trips × 2 (buy+sell) ทั้งช่วง">Trades ×2</th>
+            <th>Win%</th>
+            <th>Spacing%</th>
+            <th>Grid Min</th><th>Grid Max</th><th>Actual Min</th><th>Actual Max</th>
+            <th>Rev/mo</th>
+            <th>Grid Profit</th>
+            <th>Unrealized P&L</th>
+            <th>Net P&L</th>
+            <th>Final Equity</th>
+            <th title="Total Volume buy+sell">Tot Vol (buy+sell)</th>
+            <th title="Total Vol / Stake / months">Vol/AUC/mo</th>
+            <th title="Fee executed จริง">Tot Fee</th>
+          </tr>
+        </thead>
+        <tbody>${rows}</tbody>
+      </table>
+    </div>`;
+}
+
+function renderTable() {
+  const fee  = parseFloat(document.getElementById('feeSelect').value);
+  const pair = getActivePair();
+  let records = [];
+  if (pair === 'USDT') {
+    records = RAW.filter(r => r.fee === fee && (r.currency || 'USDT') === 'USDT');
+  } else if (pair === 'THB') {
+    records = RAW.filter(r => r.fee === fee && r.currency === 'THB');
+  } else {
+    // BOTH: แสดงทั้ง USDT และ THB
+    records = RAW.filter(r => r.fee === fee);
+  }
+  document.getElementById('allStakeTables').innerHTML =
+    records.map(d => makeStakeTable(d)).join('');
+}
+
+function renderCumulative(d) {
+  const pair = getActivePair();
+  
+  if (pair === 'BOTH') {
+    renderCumulativeOverlay();
+    return;
+  }
+
+  const p = d.pairs[0];
+  const snaps = p.snapshots || [];
+  if (!snaps.length) return;
+
+  const labels   = snaps.map(s => s.date.slice(5));
+  const gridData  = snaps.map(s => s.grid_pct);
+  const bhData    = snaps.map(s => s.bh_pct);
+  const priceData = snaps.map(s => s.price);
+  const currency  = d.currency || 'USDT';
+  const priceLabel = currency === 'THB' ? 'BTC/THB Price' : 'BTC/USDT Price';
+  const priceTickFn = currency === 'THB' 
+    ? v => (v/1000000).toFixed(1)+'M฿'
+    : v => '$'+(v/1000).toFixed(0)+'k';
+
+  document.getElementById('cumTitle').textContent = 
+    `Cumulative Returns — ${pair === 'THB' ? 'BTC/THB' : 'BTC/USDT'} Grid vs Buy & Hold`;
+
+  if (cumChart) cumChart.destroy();
+  cumChart = new Chart(document.getElementById('cumChart'), {
+    type: 'line',
+    data: {
+      labels,
+      datasets: [
+        { label: 'Grid Trading', data: gridData, borderColor: '#34d399', backgroundColor: 'transparent', borderWidth: 2, pointRadius: 0, tension: 0.3, yAxisID: 'y' },
+        { label: 'Buy & Hold',   data: bhData,   borderColor: '#f87171', backgroundColor: 'transparent', borderWidth: 1.5, borderDash: [4,3], pointRadius: 0, tension: 0.3, yAxisID: 'y' },
+        { label: priceLabel,    data: priceData, borderColor: '#64748b', backgroundColor: 'transparent', borderWidth: 1, pointRadius: 0, tension: 0.3, yAxisID: 'yPrice' },
+      ]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      interaction: { mode: 'index', intersect: false },
+      plugins: {
+        legend: { labels: { color: '#94a3b8', font: { size: 11 }, boxWidth: 14 } },
+        tooltip: { callbacks: { label: ctx => {
+          if (ctx.dataset.yAxisID === 'yPrice') return ` ${ctx.dataset.label}: ${priceTickFn(ctx.parsed.y)}`;
+          return ` ${ctx.dataset.label}: ${ctx.parsed.y >= 0 ? '+' : ''}${ctx.parsed.y.toFixed(2)}%`;
+        }}}
+      },
+      scales: {
+        x: { ticks: { color: '#475569', font: { size: 9 }, maxTicksLimit: 14 }, grid: { color: '#1e2d45' } },
+        y: { position: 'left', ticks: { color: '#475569', font: { size: 10 }, callback: v => (v>=0?'+':'')+v+'%' }, grid: { color: '#1e2d45' } },
+        yPrice: { position: 'right', ticks: { color: '#64748b', font: { size: 10 }, callback: priceTickFn }, grid: { display: false } }
+      }
+    }
+  });
+}
+
+function renderCumulativeOverlay() {
+  const { usdt, thb } = getDataBoth();
+  if (!usdt || !thb) return;
+
+  document.getElementById('cumTitle').textContent = '📊 Overlay — BTC/USDT vs BTC/THB Grid Returns';
+
+  const snapsU = usdt.pairs[0].snapshots || [];
+  const snapsT = thb.pairs[0].snapshots || [];
+  
+  // สร้าง date→value map
+  const mapU = Object.fromEntries(snapsU.map(s => [s.date, s.grid_pct]));
+  const mapT = Object.fromEntries(snapsT.map(s => [s.date, s.grid_pct]));
+  const mapBH = Object.fromEntries(snapsU.map(s => [s.date, s.bh_pct]));
+  
+  const allDates = [...new Set([...snapsU.map(s=>s.date), ...snapsT.map(s=>s.date)])].sort();
+  const labels = allDates.map(d => d.slice(5));
+
+  if (cumChart) cumChart.destroy();
+  cumChart = new Chart(document.getElementById('cumChart'), {
+    type: 'line',
+    data: {
+      labels,
+      datasets: [
+        { label: 'BTC/USDT Grid', data: allDates.map(d => mapU[d] ?? null), borderColor: '#38bdf8', backgroundColor: '#38bdf811', borderWidth: 2, pointRadius: 0, tension: 0.3, fill: false },
+        { label: 'BTC/THB Grid',  data: allDates.map(d => mapT[d] ?? null), borderColor: '#fbbf24', backgroundColor: '#fbbf2411', borderWidth: 2, pointRadius: 0, tension: 0.3, fill: false },
+        { label: 'Buy & Hold',    data: allDates.map(d => mapBH[d] ?? null), borderColor: '#f87171', backgroundColor: 'transparent', borderWidth: 1, borderDash: [4,3], pointRadius: 0, tension: 0.3 },
+      ]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      interaction: { mode: 'index', intersect: false },
+      plugins: {
+        legend: { labels: { color: '#94a3b8', font: { size: 11 }, boxWidth: 14 } },
+        tooltip: { callbacks: { label: ctx => ` ${ctx.dataset.label}: ${ctx.parsed.y != null ? (ctx.parsed.y>=0?'+':'')+ctx.parsed.y.toFixed(2)+'%' : '—'}` } }
+      },
+      scales: {
+        x: { ticks: { color: '#475569', font: { size: 9 }, maxTicksLimit: 14 }, grid: { color: '#1e2d45' } },
+        y: { ticks: { color: '#475569', font: { size: 10 }, callback: v => (v>=0?'+':'')+v+'%' }, grid: { color: '#1e2d45' } }
+      }
+    }
+  });
+}
+
+function renderMonthly(d) {
+  const allMonths = new Set();
+  d.pairs.forEach(p => Object.keys(p.monthly_revenue).forEach(m => allMonths.add(m)));
+  const months = Array.from(allMonths).sort();
+  const shortMonths = months.map(m => {
+    const [y, mo] = m.split('-');
+    return ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][parseInt(mo)-1] + ' ' + y.slice(2);
+  });
+
+  const datasets = d.pairs.map((p, i) => ({
+    label: p.pair.replace('_USDT',''),
+    data: months.map(m => +(p.monthly_revenue[m] || 0).toFixed(2)),
+    backgroundColor: COLORS[i] + '99',
+    borderColor: COLORS[i],
+    borderWidth: 1,
+  }));
+
+  if (monthlyChart) monthlyChart.destroy();
+  monthlyChart = new Chart(document.getElementById('monthlyChart'), {
+    type: 'bar',
+    data: { labels: shortMonths, datasets },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { labels: { color: '#64748b', font: { size: 11 }, boxWidth: 12 } } },
+      scales: {
+        x: { stacked: true, ticks: { color: '#475569', font: { size: 10 } }, grid: { color: '#1e2d45' } },
+        y: { stacked: true, ticks: { color: '#475569', font: { size: 10 } }, grid: { color: '#1e2d45' } }
+      }
+    }
+  });
+}
+
+function renderAPY(d) {
+  // ใช้ Period Return (ผลจริงตามช่วง backtest) ไม่ใช่ APY annualized
+  const ret = p => p.total_profit / p.stake_total * 100;
+  const pairs = [...d.pairs].sort((a,b) => ret(b) - ret(a));
+  if (apyChart) apyChart.destroy();
+  apyChart = new Chart(document.getElementById('apyChart'), {
+    type: 'bar',
+    data: {
+      labels: pairs.map(p => p.pair.replace('_USDT','').replace('_THB','')),
+      datasets: [{
+        data: pairs.map(p => +ret(p).toFixed(2)),
+        backgroundColor: pairs.map((_,i) => COLORS[i] + 'cc'),
+        borderColor: pairs.map((_,i) => COLORS[i]),
+        borderWidth: 1,
+        borderRadius: 4,
+      }]
+    },
+    options: {
+      indexAxis: 'y',
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { display: false } },
+      scales: {
+        x: { ticks: { color: '#475569', font: { size: 10 }, callback: v => v+'%' }, grid: { color: '#1e2d45' } },
+        y: { ticks: { color: '#94a3b8', font: { size: 12 } }, grid: { display: false } }
+      }
+    }
+  });
+}
+
+function renderFeeCompare() {
+  // ใช้ stake จาก RAW จริง แยกตาม currency
+  const pair = getActivePair();
+  const currency = pair === 'THB' ? 'THB' : 'USDT';
+  const records25  = RAW.filter(d => d.fee===0.0025  && (d.currency||'USDT')===currency);
+  const records125 = RAW.filter(d => d.fee===0.00125 && (d.currency||'USDT')===currency);
+  const allStakes  = [...new Set([...records25,...records125].map(d=>d.stake))].sort((a,b)=>a-b);
+  if (!allStakes.length) return;
+  const labels = allStakes.map(s => fmt(s)+' '+currency);
+  const d25  = allStakes.map(s => records25.find(d=>d.stake===s)?.total_profit || 0);
+  const d125 = allStakes.map(s => records125.find(d=>d.stake===s)?.total_profit || 0);
+
+  if (feeChart) feeChart.destroy();
+  feeChart = new Chart(document.getElementById('feeCompareChart'), {
+    type: 'bar',
+    data: {
+      labels,
+      datasets: [
+        { label: 'Fee 0.25%',  data: d25.map(v => +v.toFixed(2)),  backgroundColor: '#38bdf866', borderColor: '#38bdf8', borderWidth: 1, borderRadius: 4 },
+        { label: 'Fee 0.125%', data: d125.map(v => +v.toFixed(2)), backgroundColor: '#34d39966', borderColor: '#34d399', borderWidth: 1, borderRadius: 4 },
+      ]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { labels: { color: '#94a3b8', font: { size: 12 }, boxWidth: 14 } } },
+      scales: {
+        x: { ticks: { color: '#475569', font: { size: 12 } }, grid: { color: '#1e2d45' } },
+        y: { ticks: { color: '#475569', font: { size: 11 }, callback: v => fmt(v) }, grid: { color: '#1e2d45' } }
+      }
+    }
+  });
+}
+
+function renderLiveCard(d) {
+  const p = d.pairs[0];
+  if (!p) return;
+
+  const colP   = p.net_pnl    >= 0 ? 'var(--green)' : 'var(--red)';
+  const colR   = p.total_profit >= 0 ? 'var(--green)' : 'var(--red)';
+  const colU   = p.unrealized_pnl >= 0 ? 'var(--green)' : 'var(--red)';
+  const sign   = v => v >= 0 ? '+' : '';
+
+  document.getElementById('lv-pair').textContent     = p.pair.replace('_', '/');
+  const cur = (d.currency || 'USDT');
+  document.getElementById('lv-invest').textContent   = fmt(p.stake_total, 0) + ' ' + cur;
+  document.getElementById('lv-range').textContent    = fmt(p.grid_min, 0) + ' → ' + fmt(p.grid_max, 0) + ' ' + cur;
+  document.getElementById('lv-levels').textContent   = p.grid_levels + ' grids';
+
+  const pnlEl = document.getElementById('lv-pnl');
+  pnlEl.textContent  = sign(p.net_pnl) + fmt(p.net_pnl, 0) + ' ' + cur;
+  pnlEl.style.color  = colP;
+  const pnlPct = document.getElementById('lv-pnl-pct');
+  pnlPct.textContent = sign(p.net_pnl_pct) + p.net_pnl_pct.toFixed(2) + '%';
+  pnlPct.style.color = colP;
+
+  const realEl = document.getElementById('lv-realized');
+  realEl.textContent  = sign(p.total_profit) + fmt(p.total_profit, 0) + ' ' + cur;
+  realEl.style.color  = colR;
+  const realPct = document.getElementById('lv-realized-pct');
+  realPct.textContent = sign(p.profit_pct) + p.profit_pct.toFixed(2) + '%';
+  realPct.style.color = colR;
+
+  const unrEl = document.getElementById('lv-unrealized');
+  unrEl.textContent  = sign(p.unrealized_pnl) + fmt(p.unrealized_pnl, 0) + ' ' + cur;
+  unrEl.style.color  = colU;
+  const unrPct = document.getElementById('lv-unrealized-pct');
+  unrPct.textContent = sign(p.unrealized_pnl / p.stake_total * 100) + (p.unrealized_pnl / p.stake_total * 100).toFixed(2) + '%';
+  unrPct.style.color = colU;
+}
+
+function render() {
+  const d = getData();
+  if (!d) {
+    console.error('getData() returned undefined. RAW:', RAW.map(r=>({fee:r.fee,stake:r.stake,currency:r.currency})));
+    console.error('pairSelect:', document.getElementById('pairSelect').value);
+    console.error('feeSelect:', document.getElementById('feeSelect').value);
+    return;
+  }
+  try { renderLiveCard(d); } catch(e) { console.error('renderLiveCard:', e); }
+  try { renderCumulative(d); } catch(e) { console.error('renderCumulative:', e); }
+  try { renderStats(d); } catch(e) { console.error('renderStats:', e); }
+  try { renderTable(); } catch(e) { console.error('renderTable:', e); }
+  try { renderMonthly(d); } catch(e) { console.error('renderMonthly:', e); }
+  try { renderAPY(d); } catch(e) { console.error('renderAPY:', e); }
+  try { renderFeeCompare(); } catch(e) { console.error('renderFeeCompare:', e); }
+}
+
+document.getElementById('feeSelect').addEventListener('change', render);
+document.getElementById('stakeSelect').addEventListener('change', render);
+document.getElementById('pairSelect').addEventListener('change', () => {
+  const pair = getActivePair();
+  const stakeEl = document.getElementById('stakeSelect');
+  
+  // sync stake dropdown
+  if (pair === 'USDT') {
+    stakeEl.value = '94786';
+    stakeEl.options[0].style.display = '';
+    if (stakeEl.options[1]) stakeEl.options[1].style.display = 'none';
+    document.getElementById('headerSub').textContent = '82 levels · range 63,190–126,381 USDT · slippage 0.05%';
+    document.getElementById('dataBadge').style.display = '';
+  } else if (pair === 'THB') {
+    stakeEl.value = '3000000';
+    stakeEl.options[0].style.display = 'none';
+    if (stakeEl.options[1]) { stakeEl.options[1].style.display = ''; }
+    document.getElementById('headerSub').textContent = '82 levels · range 2,000,000–4,000,000 THB · slippage 0.05%';
+    document.getElementById('dataBadge').style.display = '';
+  } else {
+    // BOTH overlay
+    stakeEl.options[0].style.display = '';
+    if (stakeEl.options[1]) stakeEl.options[1].style.display = '';
+    document.getElementById('headerSub').textContent = 'BTC/USDT vs BTC/THB — Overlay Comparison';
+    document.getElementById('dataBadge').style.display = '';
+  }
+  render();
+});
+
+// init
+document.getElementById('dataBadge').style.display = '';
+render();
+</script>
+</body>
+</html>
